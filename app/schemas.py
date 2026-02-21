@@ -4,9 +4,11 @@ from typing import Optional
 class UserSignup(BaseModel):
     email: EmailStr
     password: str
-    role: str # patient, caregiver, consultant
-    patient_code_to_link: Optional[str] = None # Only for caregivers
-
+    full_name: str      # New Field
+    genotype: str       # New Field (e.g., AA, AS, SS)
+    role: str
+    patient_code_to_link: Optional[str] = None
+    
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

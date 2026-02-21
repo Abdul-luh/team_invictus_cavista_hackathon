@@ -40,6 +40,8 @@ def signup(data: UserSignup, db: Session = Depends(get_db)):
     new_user = User(
         email=data.email,
         password=data.password,
+        full_name=data.full_name, # Save new field
+        genotype=data.genotype,   # Save new field
         role=user_role
     )
 
