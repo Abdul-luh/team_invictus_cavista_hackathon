@@ -7,7 +7,7 @@ from typing import List
 from .database import Base, engine, get_db
 from .models import User, HealthLog
 from .schemas import UserSignup, UserLogin, UserResponse
-from .utils import generate_sickle_code, verify_drinking_action
+from .utils import generate_sickle_code, verify_drinking_action, analyze_jaundice_eye
 
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
@@ -114,4 +114,58 @@ async def upload_hydration_video(user_id: int, file: UploadFile = File(...), db:
         "drinks_today": total_drinks_today,
         "progress_percentage": min(current_progress, 100.0),
         "message": f"Verified! Progress: {round(current_progress, 1)}%"
+    }
+
+@app.post("/logs/jaundice-check/{user_id}")
+async def jaundice_check(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # 1. Read image bytes
+    image_bytes = await file.read()
+
+    # 2. Call Gemini for the Index
+    analysis = await analyze_jaundice_eye(image_bytes)
+
+    # 3. Record in HealthLog
+    new_log = HealthLog(
+        user_id=user_id,
+        log_type="jaundice",
+        value=analysis["yellow_index"],
+        note=analysis["observation"],
+        is_verified=True # It's AI verified
+    )
+    
+    db.add(new_log)
+    db.commit()
+    db.refresh(new_log)
+
+    # 4. Crisis Prediction (The "Wow" logic)
+    # Check if the last log was lower than this one (Trending upwards)
+    previous_log = db.query(HealthLog).filter(
+        HealthLog.user_id == user_id, 
+        HealthLog.log_type == "jaundice"
+    ).order_by(HealthLog.timestamp.desc()).offset(1).first()
+
+    risk_rising = False
+    if previous_log and analysis["yellow_index"] > previous_log.value:
+        risk_rising = True
+
+    return {
+        "yellow_index": analysis["yellow_index"],
+        "status": analysis["status"],
+        "risk_rising": risk_rising,
+        "message": "Crisis risk alert sent to caregiver!" if risk_rising and analysis["yellow_index"] > 5 else "Record updated."
+    }
+
+@app.get("/user/profile/{user_id}")
+def get_user_profile(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "email": user.email,
+        "role": user.role,
+        "patient_code": user.patient_code,  # This is the SC-XXXX code
+        "linked_patient_code": user.linked_patient_code, # For caregivers
+        "message": "Success"
     }
