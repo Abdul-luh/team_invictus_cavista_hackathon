@@ -7,13 +7,56 @@ import { Patient, HealthData, RiskAssessment } from '@/types';
 import { formatDate } from '@/lib/utils';
 
 /* ─── Daily tasks definition (drives notification badges) ─── */
+// In your tasks file or a separate constants file
+import { 
+  Droplets, 
+  Pill, 
+  Activity, 
+  Moon, 
+  Eye 
+} from 'lucide-react';
+
 export const DAILY_TASKS = [
-  { id: 'water',      label: 'Water Intake',      icon: '💧', desc: 'Log your water intake',            route: '/patient/tasks/water'      },
-  { id: 'medication', label: 'Medication',         icon: '💊', desc: 'Confirm you took your meds',       route: '/patient/tasks/medication'  },
-  { id: 'pain',       label: 'Pain Check',         icon: '🩺', desc: 'Rate your pain & fatigue',         route: '/patient/tasks/pain'        },
-  { id: 'temperature',label: 'Temperature',        icon: '🌡️', desc: 'Record your temperature',          route: '/patient/tasks/temperature' },
-  { id: 'sleep',      label: 'Sleep Quality',      icon: '😴', desc: 'Log last night\'s sleep',           route: '/patient/tasks/sleep'       },
-  { id: 'jaundice',   label: 'Eye Check',          icon: '👁️', desc: 'Check eye yellowing (jaundice)',   route: '/patient/tasks/jaundice'    },
+  { 
+    id: 'water', 
+    label: 'Water Intake', 
+    icon: Droplets, 
+    desc: 'Log your water intake', 
+    route: '/patient/tasks/water',
+    color: '#3b82f6' // blue
+  },
+  { 
+    id: 'medication', 
+    label: 'Medication', 
+    icon: Pill, 
+    desc: 'Confirm you took your meds', 
+    route: '/patient/tasks/medication',
+    color: '#8b5cf6' // purple
+  },
+  { 
+    id: 'pain', 
+    label: 'Pain Check', 
+    icon: Activity, 
+    desc: 'Rate your pain & fatigue', 
+    route: '/patient/tasks/pain',
+    color: '#ef4444' // red
+  },
+  { 
+    id: 'sleep', 
+    label: 'Sleep Quality', 
+    icon: Moon, 
+    desc: 'Log last night\'s sleep', 
+    route: '/patient/tasks/sleep',
+    color: '#f59e0b' // amber
+  },
+  { 
+    id: 'jaundice', 
+    label: 'Eye Check', 
+    icon: Eye, 
+    desc: 'Check eye yellowing (jaundice)', 
+    route: '/patient/tasks/jaundice',
+    color: '#10b981' // green
+  },
 ];
 
 const STYLES = `
@@ -353,30 +396,46 @@ export default function PatientDashboard() {
                   Today's Health Tasks
                   {pendingCount > 0 && <span className="notif-badge">{pendingCount}</span>}
                 </div>
-                <div className="tasks-grid">
-                  {DAILY_TASKS.map(task => {
-                    const done = completedTasks.includes(task.id);
-                    return (
-                      <button
-                        key={task.id}
-                        className={`task-btn ${done ? 'done' : 'pending'}`}
-                        onClick={() => router.push(`/patient/tasks/${task.id}`)}
-                      >
-                        {done
-                          ? <span className="task-done-tick"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
-                          : <span className="task-pending-dot" />
-                        }
-                        <span className="task-icon">{task.icon}</span>
-                        <div className="task-label">{task.label}</div>
-                        <div className="task-desc">{done ? 'Completed ✓' : task.desc}</div>
-                      </button>
-                    );
-                  })}
+                 <div className="tasks-grid">
+  {DAILY_TASKS.map(task => {
+    const done = completedTasks.includes(task.id);
+    const Icon = task.icon; // Lucide component
+
+    return (
+      <button
+        key={task.id}
+        className={`task-btn ${done ? 'done' : 'pending'}`}
+        onClick={() => router.push(`/patient/tasks/${task.id}`)}
+        style={{ '--task-color': task.color } as React.CSSProperties} // optional for CSS variables
+      >
+        {/* Status indicator */}
+        {done ? (
+          <span className="task-done-tick">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M2 5l2.5 2.5L8 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
+        ) : (
+          <span className="task-pending-dot" />
+        )}
+
+        {/* Lucide icon – you can wrap it in a span with styling */}
+        <span className="task-icon" style={{ color: task.color }}>
+          <Icon size={20} />
+        </span>
+
+        <div className="task-label">{task.label}</div>
+        <div className="task-desc">
+          {done ? 'Completed ✓' : task.desc}
+        </div>
+      </button>
+    );
+  })}
                 </div>
               </div>
 
               {/* Risk Assessment */}
-              <div className="card au3">
+              {/* <div className="card au3">
                 <div className="card-title">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -436,7 +495,7 @@ export default function PatientDashboard() {
                     <div style={{fontSize:13,fontWeight:300}}>Complete your daily check-in to get an assessment.</div>
                   </div>
                 )}
-              </div>
+              </div> */}
 
               {/* Today's Health Detail */}
               {currentHealth && (
@@ -488,13 +547,9 @@ export default function PatientDashboard() {
 
               {/* Actions */}
               <div className="actions-grid au5">
-                <button className="action-btn primary" onClick={() => router.push('/patient/checkin')}>
-                  <span className="action-icon">➕</span>
-                  <span>Full Check-in</span>
-                </button>
                 <button className="action-btn secondary" onClick={() => router.push('/patient/trends')}>
                   <span className="action-icon">📊</span>
-                  <span>Health Trends</span>
+                  <span>SOS</span>
                 </button>
                 <button className="action-btn secondary" onClick={() => router.push('/patient/contact')}>
                   <span className="action-icon">📞</span>

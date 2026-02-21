@@ -491,11 +491,7 @@ export default function CaregiverDashboard() {
                               <div className="vital-lbl">Pain Level</div>
                               <div className="vital-sub">Self-reported</div>
                             </div>
-                            <div className="vital temp">
-                              <div className="vital-val">{selH.temperature}°</div>
-                              <div className="vital-lbl">Temperature</div>
-                              <div className="vital-sub">Celsius</div>
-                            </div>
+                        
                             <div className="vital sleep">
                               <div className="vital-val">{selH.sleepHours}<span style={{fontSize:'14px',fontWeight:400}}>h</span></div>
                               <div className="vital-lbl">Sleep</div>

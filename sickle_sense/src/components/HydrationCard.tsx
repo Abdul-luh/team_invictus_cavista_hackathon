@@ -35,7 +35,6 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [verificationResult, setVerificationResult] = useState<HydrationStats | null>(null);
-  const [selectedDrinkType, setSelectedDrinkType] = useState<'water' | 'juice' | 'other'>('water');
   const [hydrationHistory, setHydrationHistory] = useState<HydrationStats['weekly_data']>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -68,12 +67,16 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-      setIsRecording(true);
+      
       setShowVideoUpload(true);
+      setIsRecording(true);
+
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 50);
+
     } catch (error) {
       console.error('Error accessing camera:', error);
       alert('Unable to access camera. Please check permissions.');
@@ -81,9 +84,11 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
   };
 
   const stopRecording = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+    if (videoRef.current) {
+      const stream = videoRef.current.srcObject as MediaStream | null;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
       videoRef.current.srcObject = null;
     }
     setIsRecording(false);
@@ -122,7 +127,6 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
     stopRecording();
   };
 
-  // Custom Interactive Tooltip for the Chart
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -205,7 +209,7 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
           </div>
         )}
 
-        {/* Interactive 7-Day Chart with Recharts */}
+        {/* Chart */}
         <div style={{
           marginBottom: '2rem',
           padding: '1.5rem',
@@ -273,43 +277,19 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
         {/* Video Upload Section */}
         {!showVideoUpload ? (
           <div style={{
-            padding: '1.5rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+            padding: '2rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
             borderRadius: '20px', border: '2px dashed #bbf7d0', textAlign: 'center'
           }}>
             <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '1rem' }}>📹</span>
             <h4 style={{ marginBottom: '0.5rem', color: '#15803d', fontSize: '1.125rem', fontWeight: 600 }}>Log Your Drink</h4>
-            <p style={{ fontSize: '0.875rem', color: '#166534', marginBottom: '1.5rem' }}>Record a quick video to verify your drink</p>
-
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', justifyContent: 'center' }}>
-              {[
-                { type: 'water', icon: '💧', label: 'Water' },
-                { type: 'juice', icon: '🧃', label: 'Juice' },
-                { type: 'other', icon: '🥤', label: 'Other' },
-              ].map((drink) => (
-                <button
-                  key={drink.type}
-                  onClick={() => setSelectedDrinkType(drink.type as typeof selectedDrinkType)}
-                  style={{
-                    flex: 1, maxWidth: '100px', padding: '0.75rem 0.5rem',
-                    border: selectedDrinkType === drink.type ? '2px solid #16a34a' : '1px solid #bbf7d0',
-                    borderRadius: '12px', background: selectedDrinkType === drink.type ? '#ffffff' : 'transparent',
-                    cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', gap: '0.25rem'
-                  }}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>{drink.icon}</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 500, color: selectedDrinkType === drink.type ? '#16a34a' : '#4b5563' }}>
-                    {drink.label}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <p style={{ fontSize: '0.875rem', color: '#166534', marginBottom: '1.5rem' }}>Record a quick video to verify your hydration</p>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
               <button
                 onClick={startRecording}
+                type='button'
                 style={{
-                  padding: '0.875rem 1.5rem', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                  padding: '0.875rem 2rem', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                   color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '0.875rem',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
                   boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
@@ -326,7 +306,7 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
             border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.05)'
           }}>
             <div style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem', background: '#1a1a1a', aspectRatio: '16/9' }}>
-              <video ref={videoRef} src={videoPreview || undefined} autoPlay={isRecording} playsInline muted={isRecording} controls={!isRecording} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
 
             {isRecording && (
@@ -340,15 +320,15 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               {isRecording ? (
-                <button onClick={stopRecording} style={{ flex: 1, padding: '0.875rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                <button type="button" onClick={stopRecording} style={{ flex: 1, padding: '0.875rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}>
                   Stop Recording
                 </button>
               ) : (
                 <>
-                  <button onClick={simulateVerification} disabled={isUploading} style={{ flex: 1, padding: '0.875rem', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.7 : 1 }}>
+                  <button type="button" onClick={simulateVerification} disabled={isUploading} style={{ flex: 1, padding: '0.875rem', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.7 : 1 }}>
                     {isUploading ? 'Verifying...' : '✓ Verify & Log Drink'}
                   </button>
-                  <button onClick={() => { setShowVideoUpload(false); setVideoFile(null); setVideoPreview(null); stopRecording(); }} style={{ padding: '0.875rem 1.5rem', background: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '12px', fontWeight: 500, cursor: 'pointer' }}>
+                  <button type="button" onClick={() => { setShowVideoUpload(false); setVideoFile(null); setVideoPreview(null); stopRecording(); }} style={{ padding: '0.875rem 1.5rem', background: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '12px', fontWeight: 500, cursor: 'pointer' }}>
                     Cancel
                   </button>
                 </>

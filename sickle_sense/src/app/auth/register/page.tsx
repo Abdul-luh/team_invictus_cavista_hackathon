@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { generateUniqueCode, isValidEmail, isValidPhone } from '@/lib/utils';
-import { mockPatients, mockCaregivers, mockRelationships } from '@/lib/mockData';
+import { isValidEmail, isValidPhone } from '@/lib/utils';
 
 /* ─── Shared design tokens ─────────────────────────────────── */
 const STYLES = `
@@ -374,96 +373,27 @@ const STYLES = `
     font-family:'DM Sans',sans-serif;
   }
 `;
-
-/* ─── Sub-components ───────────────────────────────────────── */
-function FieldGroup({
-  label, required, error, children
-}: { label:string; required?:boolean; error?:string; children:React.ReactNode }) {
-  return (
-    <div className="field-group">
-      <label className="field-label">
-        {label}
-        {required && <span className="required-mark">*</span>}
-      </label>
-      {children}
-      {error && (
-        <span className="field-error">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <circle cx="6" cy="6" r="5.5" stroke="#ef4444"/>
-            <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function TextInput({
-  type='text', placeholder, value, onChange, error, isPassword
-}: {
-  type?:string; placeholder?:string; value:string;
-  onChange:(e:React.ChangeEvent<HTMLInputElement>)=>void;
-  error?:string; isPassword?:boolean;
-}) {
-  const [show, setShow] = useState(false);
-  const inputType = isPassword ? (show ? 'text' : 'password') : type;
-  return (
-    <div className={isPassword ? 'input-wrapper' : ''}>
-      <input
-        type={inputType}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        className={`field-input ${error ? 'error' : ''}`}
-      />
-      {isPassword && (
-        <button type="button" className="eye-btn" onClick={() => setShow(!show)} aria-label="Toggle password">
-          {show ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-          )}
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* ─── Main page ────────────────────────────────────────────── */
 export default function RegisterPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const role = searchParams.get('role') as 'patient' | 'caregiver' | null;
 
   const [formData, setFormData] = useState({
-    name:'', email:'', phone:'', password:'', confirmPassword:'',
-    patientCode:'', relationship:'', dateOfBirth:'', genotype:'',
+    name: '', email: '', phone: '', password: '', confirmPassword: '',
+    patientCode: '', relationship: '', dateOfBirth: '', genotype: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
-  const [uniqueCode, setUniqueCode] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [patientCodeFromBackend, setPatientCodeFromBackend] = useState('');
 
   useEffect(() => {
-    if (role === 'patient') setUniqueCode(generateUniqueCode());
+    // No longer generate code on client
   }, [role]);
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFormData(p => ({ ...p, [key]: e.target.value }));
-
-  const copyCode = () => {
-    navigator.clipboard.writeText(uniqueCode).then(() => {
-      setCopied(true); setTimeout(() => setCopied(false), 2000);
-    });
-  };
 
   const validateForm = () => {
     const e: Record<string, string> = {};
@@ -484,49 +414,69 @@ export default function RegisterPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (role === 'patient') {
-      const p = {
-        id:`patient_${Date.now()}`, email:formData.email, name:formData.name,
-        phone:formData.phone, role:'patient' as const, uniqueCode,
-        dateOfBirth:new Date(formData.dateOfBirth), genotype:formData.genotype,
-        medicalHistory:[], emergencyContacts:[formData.phone], createdAt:new Date(),
-      };
-      mockPatients.set(p.id, p);
-      localStorage.setItem('user', JSON.stringify(p));
-      localStorage.setItem('userId', p.id);
-      const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('role', p.role);
-      localStorage.setItem('email', p.email);
-    } else {
-      let patientId = '';
-      for (const [id, patient] of mockPatients) {
-        if (patient.uniqueCode === formData.patientCode.toUpperCase()) { patientId = id; break; }
-      }
-      if (!patientId) { setErrors({ patientCode:'Patient code not found' }); return; }
+    setIsSubmitting(true);
+    setApiError(null);
+    setSuccess(false);
 
-      const c = {
-        id:`caregiver_${Date.now()}`, email:formData.email, name:formData.name,
-        phone:formData.phone, role:'caregiver' as const,
-        relationship:formData.relationship, linkedPatients:[patientId], createdAt:new Date(),
-      };
-      mockCaregivers.set(c.id, c);
-      if (!mockRelationships.has(patientId)) mockRelationships.set(patientId, []);
-      mockRelationships.get(patientId)!.push(c.id);
-      localStorage.setItem('user', JSON.stringify(c));
-      localStorage.setItem('userId', c.id);
-      const tokenC = `tok_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
-      localStorage.setItem('authToken', tokenC);
-      localStorage.setItem('role', c.role);
-      localStorage.setItem('email', c.email);
+    // Construct payload according to backend expectations
+    const payload: any = {
+      email: formData.email,
+      password: formData.password,
+      role: role,
+      name: formData.name,
+      phone: formData.phone,
+    };
+
+    if (role === 'patient') {
+      payload.dateOfBirth = formData.dateOfBirth;
+      payload.genotype = formData.genotype;
+    } else if (role === 'caregiver') {
+      payload.patientCode = formData.patientCode.toUpperCase(); // ensure uppercase
+      payload.relationship = formData.relationship;
     }
 
-    setSuccess(true);
-    setTimeout(() => router.push(role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard'), 1500);
+    try {
+      const response = await fetch('https://team-invictus-cavista-hackathon.onrender.com/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle validation or server errors
+        const errorMsg = data.message || data.error || 'Registration failed. Please try again.';
+        setApiError(errorMsg);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Success – store token and user data
+      const { token, user } = data;
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userId', user.id);
+      localStorage.setItem('role', user.role);
+      localStorage.setItem('email', user.email);
+
+      // If patient, store patient code (optional)
+      if (user.role === 'patient' && user.patientCode) {
+        setPatientCodeFromBackend(user.patientCode);
+      }
+
+      setSuccess(true);
+      setTimeout(() => {
+        router.push(user.role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
+      }, 1500);
+    } catch (error) {
+      setApiError('Network error. Please check your connection.');
+      setIsSubmitting(false);
+    }
   };
 
   if (!role) {
@@ -534,9 +484,9 @@ export default function RegisterPage() {
       <>
         <style>{STYLES}</style>
         <div className="invalid-state">
-          <span style={{fontSize:32}}>⚠️</span>
-          <p style={{color:'#6b7280',fontSize:15}}>Invalid role. Please go back and select a role.</p>
-          <a href="/auth" style={{color:'#16a34a',fontWeight:600,fontSize:14}}>← Go back</a>
+          <span style={{ fontSize: 32 }}>⚠️</span>
+          <p style={{ color: '#6b7280', fontSize: 15 }}>Invalid role. Please go back and select a role.</p>
+          <a href="/auth" style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>← Go back</a>
         </div>
       </>
     );
@@ -550,7 +500,6 @@ export default function RegisterPage() {
         <div className="blob blob-br" />
         <div className="grid-bg" />
 
-        {/* Header */}
         <div className="page-header">
           <a href="/auth" className="back-link">
             <span className="back-arrow">
@@ -580,9 +529,8 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Form card */}
         <div className="form-card">
-          <div style={{display:'flex',justifyContent:'center'}}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <span className="role-badge">
               <span className="role-dot" />
               {role === 'patient' ? '👤 Registering as Patient' : '🤝 Registering as Caregiver'}
@@ -594,13 +542,24 @@ export default function RegisterPage() {
               <span className="alert-icon">✓</span>
               <div>
                 <div className="alert-title">Registration Successful!</div>
+                {patientCodeFromBackend && (
+                  <div style={{ marginTop: 4 }}>
+                    Your patient code: <strong>{patientCodeFromBackend}</strong>
+                  </div>
+                )}
                 Redirecting to your {role} dashboard...
               </div>
             </div>
           )}
 
+          {apiError && (
+            <div className="alert alert-error">
+              <span className="alert-icon">⚠️</span>
+              <div>{apiError}</div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} noValidate>
-            {/* ── Personal info ── */}
             <div className="section-divider">
               <div className="divider-line" />
               <span className="divider-label">Personal Info</span>
@@ -623,7 +582,6 @@ export default function RegisterPage() {
               </FieldGroup>
             </div>
 
-            {/* ── Patient-specific ── */}
             {role === 'patient' && (
               <>
                 <div className="section-divider">
@@ -661,28 +619,10 @@ export default function RegisterPage() {
                       </span>
                     </div>
                   </FieldGroup>
-
-                  {/* <div className="field-full">
-                    <div className="code-card">
-                      <span className="code-label">Your unique patient code</span>
-                      <span className="code-value">{uniqueCode}</span>
-                      <span className="code-hint">
-                        Share this with caregivers so they can link to your account.
-                      </span>
-                      <button type="button" className="code-copy-btn" onClick={copyCode}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="9" y="9" width="13" height="13" rx="2"/>
-                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                        </svg>
-                        {copied ? 'Copied!' : 'Copy code'}
-                      </button>
-                    </div>
-                  </div> */}
                 </div>
               </>
             )}
 
-            {/* ── Caregiver-specific ── */}
             {role === 'caregiver' && (
               <>
                 <div className="section-divider">
@@ -726,7 +666,6 @@ export default function RegisterPage() {
               </>
             )}
 
-            {/* ── Password ── */}
             <div className="section-divider">
               <div className="divider-line" />
               <span className="divider-label">Security</span>
@@ -738,14 +677,19 @@ export default function RegisterPage() {
                 <TextInput isPassword placeholder="Min. 6 characters" value={formData.password} onChange={set('password')} error={errors.password} />
               </FieldGroup>
 
-              {/* <FieldGroup label="Confirm Password" required error={errors.confirmPassword}>
+              <FieldGroup label="Confirm Password" required error={errors.confirmPassword}>
                 <TextInput isPassword placeholder="Re-enter password" value={formData.confirmPassword} onChange={set('confirmPassword')} error={errors.confirmPassword} />
-              </FieldGroup> */}
+              </FieldGroup>
             </div>
 
-            <div style={{marginTop:'24px', display:'flex', flexDirection:'column', gap:'12px'}}>
-              <button type="submit" className="btn-submit" disabled={success}>
-                {success ? 'Creating account…' : 'Create Account →'}
+            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button type="submit" className="btn-submit" disabled={isSubmitting || success}>
+                {isSubmitting ? (
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                    Creating account...
+                  </span>
+                ) : success ? 'Redirecting...' : 'Create Account →'}
               </button>
 
               <p className="form-footer">
@@ -756,7 +700,7 @@ export default function RegisterPage() {
           </form>
         </div>
 
-        <div style={{height:'32px'}} />
+        <div style={{ height: '32px' }} />
       </div>
     </>
   );

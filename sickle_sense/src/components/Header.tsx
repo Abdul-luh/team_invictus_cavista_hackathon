@@ -398,16 +398,16 @@ export const Header = ({ title, userRole }: HeaderProps) => {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      router.push(userRole === 'patient' ? '/patient/profile' : '/caregiver/profile');
-                    }}
-                    className="dropdown-item"
-                  >
-                    <span className="item-icon">👤</span>
-                    My Profile
-                  </button>
+                    <button
+                        onClick={() => {
+                        setShowMenu(false);
+                        router.push(userRole === 'patient' ? '/patient/profile' : '/caregiver/profile');
+                        }}
+                        className="dropdown-item"
+                    >
+                        <span className="item-icon">👤</span>
+                        My Profile
+                    </button>
 
                   <button
                     onClick={() => {
