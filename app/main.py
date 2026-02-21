@@ -8,11 +8,23 @@ from .database import Base, engine, get_db
 from .models import User, HealthLog
 from .schemas import UserSignup, UserLogin, UserResponse
 from .utils import generate_sickle_code, verify_drinking_action, analyze_jaundice_eye
+from fastapi.middleware.cors import CORSMiddleware
+import google.generativeai as genai
 
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Sickle DB API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows any website to talk to your backend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 
 @app.get("/")
 def home():
@@ -168,4 +180,52 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         "patient_code": user.patient_code,  # This is the SC-XXXX code
         "linked_patient_code": user.linked_patient_code, # For caregivers
         "message": "Success"
+    }
+
+
+@app.get("/user/clinical-report/{user_id}")
+def get_clinical_report(user_id: int, db: Session = Depends(get_db)):
+    # 1. Grab the most recent log we just created
+    latest = db.query(HealthLog).filter(HealthLog.user_id == user_id).order_by(HealthLog.timestamp.desc()).first()
+
+    if not latest:
+        return {"error": "No data found for this user."}
+
+    # 2. Logic: Compare current data to the "Healthy Baseline" we discussed
+    # These are standard clinical targets for SCD care
+    target_water = 2500  
+    base_jaundice = 2.0 
+
+    # Calculate the exact percentages you want to show
+    water_drop = round(((target_water - latest.water_intake_ml) / target_water) * 100, 1)
+    # Ensure we don't show a negative increase
+    jaundice_rise = round(((latest.yellowishness_score - base_jaundice) / base_jaundice) * 100, 1) if latest.yellowishness_score > base_jaundice else 0
+
+    # 3. The Detailed Gemini Prompt (Strictly using your logic)
+    prompt = f"""
+    You are a professional Hematologist. Analyze this specific Sickle Cell data:
+    - Hydration Level: {latest.water_intake_ml}ml (which is a {water_drop}% drop from the safety target)
+    - Eye Yellowishness Score: {latest.yellowishness_score}/10 (indicating a {jaundice_rise}% estimated rise in Bilirubin markers)
+    
+    Write a detailed, formal medical summary for the patient.
+    1. Start by explicitly stating: 'Your hydration level has dropped by {water_drop}%...'
+    2. Mention that the eye data suggests a {jaundice_rise}% increase in bilirubin.
+    3. Explain that this combination increases the risk of a Vaso-Occlusive Crisis (VOC).
+    4. Conclude with: 'It is strongly advised that you see a doctor immediately.'
+    
+    Make it 2-3 detailed, professional paragraphs.
+    """
+    
+    # 4. Generate using the same model we set up earlier
+    model = genai.GenerativeModel('gemini-2.5-flash')
+    response = model.generate_content(prompt)
+    
+    return {
+        "user_id": user_id,
+        "generated_at": latest.timestamp,
+        "detailed_report": response.text,
+        "metrics": {
+            "water_percent_drop": water_drop,
+            "bilirubin_percent_rise": jaundice_rise
+        }
     }
