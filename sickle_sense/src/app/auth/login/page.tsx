@@ -421,6 +421,10 @@ export default function LoginPage() {
       }
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('userId', user.id);
+      const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('role', user.role);
+      localStorage.setItem('email', user.email);
       setIsLoading(false);
       router.push(role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
     }, 1000);

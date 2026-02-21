@@ -498,6 +498,10 @@ export default function RegisterPage() {
       mockPatients.set(p.id, p);
       localStorage.setItem('user', JSON.stringify(p));
       localStorage.setItem('userId', p.id);
+      const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('role', p.role);
+      localStorage.setItem('email', p.email);
     } else {
       let patientId = '';
       for (const [id, patient] of mockPatients) {
@@ -515,6 +519,10 @@ export default function RegisterPage() {
       mockRelationships.get(patientId)!.push(c.id);
       localStorage.setItem('user', JSON.stringify(c));
       localStorage.setItem('userId', c.id);
+      const tokenC = `tok_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+      localStorage.setItem('authToken', tokenC);
+      localStorage.setItem('role', c.role);
+      localStorage.setItem('email', c.email);
     }
 
     setSuccess(true);

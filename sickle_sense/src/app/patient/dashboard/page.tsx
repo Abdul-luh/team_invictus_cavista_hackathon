@@ -2,9 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Header, Sidebar } from '@/components';
-import { mockPatients, mockNotifications } from '@/lib/mockData';
-import { Notification } from '@/types';
+import { mockHealthData, mockRiskAssessments, mockPatients, initializeMockData } from '@/lib/mockData';
+import { Patient, HealthData, RiskAssessment } from '@/types';
+import { formatDate } from '@/lib/utils';
+
+/* ─── Daily tasks definition (drives notification badges) ─── */
+export const DAILY_TASKS = [
+  { id: 'water',      label: 'Water Intake',      icon: '💧', desc: 'Log your water intake',            route: '/patient/tasks/water'      },
+  { id: 'medication', label: 'Medication',         icon: '💊', desc: 'Confirm you took your meds',       route: '/patient/tasks/medication'  },
+  { id: 'pain',       label: 'Pain Check',         icon: '🩺', desc: 'Rate your pain & fatigue',         route: '/patient/tasks/pain'        },
+  { id: 'temperature',label: 'Temperature',        icon: '🌡️', desc: 'Record your temperature',          route: '/patient/tasks/temperature' },
+  { id: 'sleep',      label: 'Sleep Quality',      icon: '😴', desc: 'Log last night\'s sleep',           route: '/patient/tasks/sleep'       },
+  { id: 'jaundice',   label: 'Eye Check',          icon: '👁️', desc: 'Check eye yellowing (jaundice)',   route: '/patient/tasks/jaundice'    },
+];
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500&display=swap');
@@ -13,7 +23,8 @@ const STYLES = `
     --g50:#f0fdf4;--g100:#dcfce7;--g200:#bbf7d0;--g500:#22c55e;--g600:#16a34a;--g700:#15803d;
     --rh-bg:#fef2f2;--rh-bd:#fecaca;--rh-tx:#dc2626;--rh-dot:#ef4444;
     --rm-bg:#fffbeb;--rm-bd:#fde68a;--rm-tx:#d97706;--rm-dot:#f59e0b;
-    --bl50:#eff6ff;--bl100:#dbeafe;--bl500:#3b82f6;--bl600:#2563eb;--bl700:#1d4ed8;
+    --bl50:#eff6ff;--bl100:#dbeafe;--bl500:#3b82f6;--bl600:#2563eb;
+    --pu50:#faf5ff;--pu200:#e9d5ff;--pu600:#9333ea;
     --n0:#fff;--n50:#f9fafb;--n100:#f3f4f6;--n200:#e5e7eb;
     --n300:#d1d5db;--n400:#9ca3af;--n500:#6b7280;--n600:#4b5563;--n700:#374151;--n900:#111827;
     --sh-sm:0 1px 4px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04);
@@ -24,407 +35,474 @@ const STYLES = `
 
   .shell{display:flex;min-height:100svh;}
   .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
-  .content{flex:1;overflow-y:auto;padding:clamp(16px,3vw,28px);}
-  .inner{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:clamp(14px,2vw,20px);}
+  .content{flex:1;overflow-y:auto;padding:clamp(14px,3vw,28px);}
+  .inner{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:clamp(14px,2vw,20px);}
 
-  /* Top row */
-  .page-top{
-    display:flex;align-items:flex-start;justify-content:space-between;
-    flex-wrap:wrap;gap:12px;
+  /* Banner */
+  .banner{
+    background:linear-gradient(135deg,var(--g600) 0%,#0d5c2c 100%);
+    border-radius:var(--r-xl);
+    padding:clamp(18px,3vw,28px) clamp(20px,4vw,32px);
+    color:white;position:relative;overflow:hidden;
+    box-shadow:var(--sh-green);
+    display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;
   }
-  .page-heading{
-    font-family:'Sora',sans-serif;
-    font-size:clamp(18px,2.5vw,22px);font-weight:800;
-    color:var(--n900);letter-spacing:-.5px;margin-bottom:3px;
+  .banner::before{content:'';position:absolute;top:-50px;right:-30px;width:220px;height:220px;background:rgba(255,255,255,.05);border-radius:50%;}
+  .banner::after{content:'';position:absolute;bottom:-70px;right:100px;width:180px;height:180px;background:rgba(255,255,255,.04);border-radius:50%;}
+  .banner-body{position:relative;z-index:1;}
+  .banner-title{font-family:'Sora',sans-serif;font-size:clamp(17px,2.2vw,24px);font-weight:800;letter-spacing:-.5px;margin-bottom:5px;}
+  .banner-sub{font-size:13px;opacity:.8;font-weight:300;}
+  .banner-code{
+    position:relative;z-index:1;
+    background:rgba(255,255,255,.15);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:var(--r-lg);
+    padding:10px 16px;text-align:center;
+    backdrop-filter:blur(8px);
+    flex-shrink:0;
   }
-  .page-sub{font-size:13px;color:var(--n400);font-weight:300;}
+  .banner-code-lbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;opacity:.7;margin-bottom:3px;}
+  .banner-code-val{font-family:'Sora',sans-serif;font-size:18px;font-weight:800;letter-spacing:.18em;}
 
-  /* Alert */
-  .alert{
-    border-radius:var(--r-lg);padding:11px 14px;
-    display:flex;align-items:flex-start;gap:9px;
-    font-size:13px;border:1px solid;
-  }
-  .alert.info{background:var(--bl50);border-color:var(--bl100);color:var(--bl700);}
-  .alert-title{font-weight:700;margin-bottom:1px;}
+  /* Stats */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  @media(max-width:680px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
 
-  /* Filter bar */
-  .filter-bar{
-    display:flex;align-items:center;justify-content:space-between;
-    flex-wrap:wrap;gap:10px;
-  }
-  .filter-pills{display:flex;gap:6px;flex-wrap:wrap;}
-  .pill{
-    display:inline-flex;align-items:center;gap:5px;
-    padding:7px 14px;border-radius:100px;
-    font-family:'DM Sans',sans-serif;
-    font-size:13px;font-weight:500;cursor:pointer;
-    border:1.5px solid;
-    transition:all .2s;white-space:nowrap;
-  }
-  .pill.active-all    {background:var(--n900);color:white;border-color:var(--n900);}
-  .pill.active-unread {background:var(--bl600);color:white;border-color:var(--bl600);}
-  .pill.active-high   {background:var(--rh-dot);color:white;border-color:var(--rh-dot);}
-  .pill.inactive{background:var(--n0);color:var(--n600);border-color:var(--n200);}
-  .pill.inactive:hover{background:var(--n50);border-color:var(--n300);}
-  .pill-count{
-    background:rgba(255,255,255,.25);
-    border-radius:100px;padding:0 5px;
-    font-size:11px;font-weight:700;
-  }
-  .pill.inactive .pill-count{background:var(--n100);color:var(--n500);}
-
-  /* Mark all button */
-  .mark-all-btn{
-    display:inline-flex;align-items:center;gap:5px;
-    padding:7px 13px;border-radius:100px;
-    font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
-    cursor:pointer;border:1.5px solid var(--n200);
-    background:var(--n0);color:var(--n600);
-    transition:all .2s;
-  }
-  .mark-all-btn:hover{background:var(--n50);border-color:var(--n300);}
-
-  /* Notification card */
-  .notif-card{
-    display:flex;align-items:flex-start;gap:12px;
-    padding:14px 16px;border-radius:var(--r-xl);
-    border:1px solid var(--n200);background:var(--n0);
-    cursor:pointer;transition:all .22s;
-    box-shadow:var(--sh-sm);
+  .stat{
+    background:var(--n0);border:1px solid var(--n200);
+    border-radius:var(--r-lg);padding:16px;
+    box-shadow:0 1px 2px rgba(0,0,0,.04);
     position:relative;overflow:hidden;
   }
-  .notif-card::before{
-    content:'';position:absolute;top:0;bottom:0;left:0;
-    width:3px;border-radius:0 2px 2px 0;
-    transition:background .2s;
-  }
-  .notif-card.high::before  {background:var(--rh-dot);}
-  .notif-card.medium::before{background:var(--rm-dot);}
-  .notif-card.low::before   {background:var(--bl500);}
-  .notif-card.read::before  {background:var(--n200);}
-  .notif-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);}
-  .notif-card.unread{background:var(--bl50);}
+  .stat::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r-lg) var(--r-lg) 0 0;}
+  .stat.green::after{background:var(--g500);}
+  .stat.amber::after{background:var(--rm-dot);}
+  .stat.blue::after{background:var(--bl500);}
+  .stat.orange::after{background:#f97316;}
+  .stat-ico{position:absolute;right:12px;top:14px;font-size:18px;opacity:.12;}
+  .stat-val{font-family:'Sora',sans-serif;font-size:clamp(20px,2.8vw,28px);font-weight:800;line-height:1;margin-bottom:4px;}
+  .stat.green .stat-val{color:var(--g600);}
+  .stat.amber .stat-val{color:var(--rm-tx);}
+  .stat.blue  .stat-val{color:var(--bl600);}
+  .stat.orange .stat-val{color:#ea580c;}
+  .stat-lbl{font-size:12px;font-weight:500;color:var(--n500);}
+  .stat-sub{font-size:11px;color:var(--n300);margin-top:2px;}
 
-  .notif-icon-wrap{
-    width:40px;height:40px;border-radius:12px;
-    display:flex;align-items:center;justify-content:center;
-    font-size:18px;flex-shrink:0;
-  }
-  .notif-icon-wrap.high  {background:var(--rh-bg);}
-  .notif-icon-wrap.medium{background:var(--rm-bg);}
-  .notif-icon-wrap.low   {background:var(--bl50);}
-  .notif-icon-wrap.read  {background:var(--n100);}
+  /* Card */
+  .card{background:var(--n0);border:1px solid var(--n200);border-radius:var(--r-xl);padding:clamp(16px,2.5vw,24px);box-shadow:var(--sh-sm);}
+  .card-title{font-family:'Sora',sans-serif;font-size:14px;font-weight:700;color:var(--n900);letter-spacing:-.3px;margin-bottom:16px;display:flex;align-items:center;gap:7px;}
 
-  .notif-body{flex:1;min-width:0;}
-  .notif-head{
-    display:flex;align-items:flex-start;
-    justify-content:space-between;gap:8px;
-    margin-bottom:4px;
-  }
-  .notif-title{
-    font-family:'Sora',sans-serif;
-    font-size:13px;font-weight:700;color:var(--n900);
-    line-height:1.3;
-  }
-  .notif-card.read .notif-title{color:var(--n600);font-weight:600;}
-  .notif-msg{
-    font-size:13px;color:var(--n500);
-    font-weight:300;line-height:1.5;margin-bottom:8px;
-  }
-  .notif-meta{
-    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  }
-  .notif-patient{
-    font-size:11px;font-weight:500;color:var(--n500);
-    display:flex;align-items:center;gap:4px;
-  }
-  .notif-time{font-size:11px;color:var(--n400);font-weight:300;}
+  /* Daily tasks */
+  .tasks-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  @media(max-width:700px){.tasks-grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:440px){.tasks-grid{grid-template-columns:1fr 1fr;}}
 
-  /* Severity chip */
-  .sev-chip{
-    display:inline-flex;align-items:center;gap:4px;
-    padding:2px 8px;border-radius:100px;
-    font-size:10px;font-weight:700;text-transform:uppercase;
-    letter-spacing:.04em;border:1px solid;flex-shrink:0;
+  .task-btn{
+    display:flex;flex-direction:column;align-items:flex-start;
+    padding:14px;border-radius:var(--r-lg);
+    border:1.5px solid var(--n200);
+    background:var(--n0);
+    cursor:pointer;
+    transition:all .2s cubic-bezier(.34,1.56,.64,1);
+    text-align:left;position:relative;overflow:hidden;
   }
-  .sev-chip.high  {background:var(--rh-bg);border-color:var(--rh-bd);color:var(--rh-tx);}
-  .sev-chip.medium{background:var(--rm-bg);border-color:var(--rm-bd);color:var(--rm-tx);}
-  .sev-chip.low   {background:var(--bl50); border-color:var(--bl100);color:var(--bl700);}
+  .task-btn:hover{border-color:var(--g500);transform:translateY(-2px);box-shadow:0 6px 20px rgba(22,163,74,.12);}
+  .task-btn.done{border-color:var(--g200);background:var(--g50);}
+  .task-btn.pending{border-color:var(--rm-bd);background:var(--rm-bg);}
 
-  /* Unread dot */
-  .unread-dot{
-    width:9px;height:9px;border-radius:50%;
-    background:var(--bl500);flex-shrink:0;margin-top:5px;
+  .task-done-tick{
+    position:absolute;top:10px;right:10px;
+    width:20px;height:20px;border-radius:50%;
+    background:var(--g500);display:flex;align-items:center;justify-content:center;
   }
+  .task-pending-dot{
+    position:absolute;top:10px;right:10px;
+    width:8px;height:8px;border-radius:50%;
+    background:var(--rm-dot);
+    animation:pulseDot 1.8s ease-in-out infinite;
+  }
+  @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
 
-  /* Right-side actions */
-  .notif-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
-  .del-btn{
-    background:none;border:none;cursor:pointer;
-    color:var(--n300);padding:4px;border-radius:6px;
-    transition:all .15s;display:flex;align-items:center;
-  }
-  .del-btn:hover{color:var(--rh-tx);background:var(--rh-bg);}
+  .task-icon{font-size:22px;margin-bottom:8px;}
+  .task-label{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;color:var(--n900);margin-bottom:2px;}
+  .task-desc{font-size:11px;color:var(--n400);font-weight:300;line-height:1.4;}
+  .task-btn.done .task-label{color:var(--g700);}
+  .task-btn.pending .task-label{color:var(--rm-tx);}
 
-  /* Group header */
-  .group-label{
-    font-size:11px;font-weight:600;color:var(--n400);
-    text-transform:uppercase;letter-spacing:.07em;
-    padding:4px 0;
-    display:flex;align-items:center;gap:8px;
-  }
-  .group-line{flex:1;height:1px;background:var(--n200);}
+  /* Risk assessment */
+  .risk-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  .risk-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;border:1px solid;white-space:nowrap;}
+  .risk-badge.high{background:var(--rh-bg);border-color:var(--rh-bd);color:var(--rh-tx);}
+  .risk-badge.medium{background:var(--rm-bg);border-color:var(--rm-bd);color:var(--rm-tx);}
+  .risk-badge.low{background:var(--g50);border-color:var(--g200);color:var(--g700);}
+  .risk-dot{width:6px;height:6px;border-radius:50%;}
+  .risk-badge.high .risk-dot{background:var(--rh-dot);}
+  .risk-badge.medium .risk-dot{background:var(--rm-dot);}
+  .risk-badge.low .risk-dot{background:var(--g500);}
 
-  /* Empty */
-  .empty{
-    text-align:center;
-    padding:clamp(40px,7vw,72px) 20px;
-    color:var(--n400);
-  }
-  .empty-icon{font-size:40px;margin-bottom:14px;opacity:.4;}
-  .empty-title{
-    font-family:'Sora',sans-serif;
-    font-size:16px;font-weight:700;color:var(--n600);margin-bottom:5px;
-  }
-  .empty-sub{font-size:13px;font-weight:300;line-height:1.5;}
+  .risk-bar-wrap{background:var(--n100);border-radius:100px;height:8px;overflow:hidden;margin-bottom:6px;}
+  .risk-bar{height:8px;border-radius:100px;transition:width .6s ease;}
+  .risk-bar.low{background:var(--g500);}
+  .risk-bar.medium{background:var(--rm-dot);}
+  .risk-bar.high{background:var(--rh-dot);}
 
-  /* Card wrapper */
-  .card{
-    background:var(--n0);border:1px solid var(--n200);
-    border-radius:var(--r-xl);
-    box-shadow:var(--sh-sm);
-    overflow:hidden;
+  .factor-item{display:flex;align-items:flex-start;gap:7px;padding:8px 10px;border-radius:var(--r-md);background:var(--rh-bg);border:1px solid var(--rh-bd);font-size:13px;color:var(--rh-tx);margin-bottom:6px;}
+  .rec-item{display:flex;align-items:flex-start;gap:7px;padding:8px 10px;border-radius:var(--r-md);background:var(--g50);border:1px solid var(--g100);font-size:13px;color:var(--g700);margin-bottom:6px;}
+
+  /* Alert */
+  .alert{border-radius:var(--r-lg);padding:11px 14px;display:flex;align-items:flex-start;gap:9px;font-size:13px;border:1px solid;margin-bottom:14px;}
+  .alert.warning{background:var(--rm-bg);border-color:var(--rm-bd);color:var(--rm-tx);}
+  .alert-title{font-weight:700;margin-bottom:1px;}
+
+  /* Health bars */
+  .health-bar-wrap{background:var(--n100);border-radius:100px;height:6px;overflow:hidden;}
+  .health-bar{height:6px;border-radius:100px;}
+
+  /* Action buttons */
+  .actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  @media(max-width:560px){.actions-grid{grid-template-columns:1fr;}}
+
+  .action-btn{
+    display:flex;align-items:center;gap:10px;
+    padding:13px 16px;border-radius:var(--r-lg);
+    cursor:pointer;border:none;font-family:'DM Sans',sans-serif;
+    font-size:14px;font-weight:500;transition:all .2s;text-align:left;
   }
+  .action-btn.primary{background:linear-gradient(135deg,var(--g600),#15803d);color:white;box-shadow:var(--sh-green);}
+  .action-btn.primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(22,163,74,.35);}
+  .action-btn.secondary{background:var(--n0);color:var(--n700);border:1.5px solid var(--n200);}
+  .action-btn.secondary:hover{background:var(--n50);border-color:var(--n300);}
+  .action-icon{font-size:18px;flex-shrink:0;}
+
+  /* Medication badge */
+  .med-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600;}
+  .med-badge.ok{background:var(--g50);color:var(--g700);border:1px solid var(--g200);}
+  .med-badge.missed{background:var(--rh-bg);color:var(--rh-tx);border:1px solid var(--rh-bd);}
+
+  /* Activity chip */
+  .activity-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600;background:var(--bl50);color:var(--bl600);border:1px solid var(--bl100);}
+
+  /* Two-col health grid */
+  .health-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:520px){.health-grid{grid-template-columns:1fr;}}
+  .health-row{display:flex;flex-direction:column;gap:10px;}
+  .health-item-lbl{font-size:12px;color:var(--n400);font-weight:500;margin-bottom:4px;}
+  .health-item-val{font-size:14px;font-weight:600;color:var(--n800);}
+  .bar-row{display:flex;align-items:center;gap:8px;}
+  .bar-wrap{flex:1;background:var(--n100);border-radius:100px;height:6px;overflow:hidden;}
+  .bar{height:6px;border-radius:100px;}
+
+  /* Loading */
+  .loading-screen{min-height:100svh;display:flex;align-items:center;justify-content:center;background:var(--n50);flex-direction:column;gap:14px;}
+  .spinner{width:40px;height:40px;border:3px solid var(--g100);border-top-color:var(--g600);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:14px;color:var(--n500);font-weight:300;}
 
   /* Animations */
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   .au {animation:fadeUp .4s ease both;}
   .au1{animation:fadeUp .4s ease .05s both;}
-  .au2{animation:fadeUp .4s ease .1s both;}
+  .au2{animation:fadeUp .4s ease .10s both;}
   .au3{animation:fadeUp .4s ease .15s both;}
+  .au4{animation:fadeUp .4s ease .20s both;}
+  .au5{animation:fadeUp .4s ease .25s both;}
+
+  /* Notification dot on task header */
+  .notif-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--rm-dot);color:white;
+    font-size:10px;font-weight:700;
+    width:18px;height:18px;border-radius:50%;
+    margin-left:auto;
+  }
 `;
 
-type FilterType = 'all' | 'unread' | 'high';
-
-const ICONS: Record<string, string> = {
-  risk_alert:'⚠️', medication_reminder:'💊', appointment:'📅', default:'ℹ️'
-};
-
-export default function NotificationsPage() {
+export default function PatientDashboard() {
   const router = useRouter();
-  const [caregiver, setCaregiver] = useState<any>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [filter, setFilter] = useState<FilterType>('all');
+  // TEMP DEV FLAG: set to true to always use mock patient data for UI work
+  const DEV_USE_MOCK = true;
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [currentHealth, setCurrentHealth] = useState<HealthData | null>(null);
+  const [currentRisk, setCurrentRisk] = useState<RiskAssessment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
 
   useEffect(() => {
+    if (mockPatients.size === 0) initializeMockData();
+
+    if (DEV_USE_MOCK) {
+      // Pick the first mock patient available and use that for UI work
+      const first = mockPatients.entries().next();
+      if (first.done) { setIsLoading(false); return; }
+      const [mockId, mockPatient] = first.value as [string, Patient];
+      setPatient(mockPatient);
+
+      const hList = mockHealthData.get(mockId) || [];
+      if (hList.length) setCurrentHealth(hList[hList.length - 1]);
+
+      const rList = mockRiskAssessments.get(mockId) || [];
+      if (rList.length) setCurrentRisk(rList[rList.length - 1]);
+
+      // write minimal localStorage keys so other components keep working
+      try {
+        localStorage.setItem('user', JSON.stringify(mockPatient));
+        localStorage.setItem('userId', mockId);
+        localStorage.setItem('authToken', `dev_${Date.now()}`);
+        localStorage.setItem('role', mockPatient.role);
+        localStorage.setItem('email', mockPatient.email);
+      } catch (e) {
+        // ignore storage errors in some test environments
+      }
+
+      const todayKey = `tasks_${mockId}_${new Date().toDateString()}`;
+      const saved = localStorage.getItem(todayKey);
+      if (saved) setCompletedTasks(JSON.parse(saved));
+
+      setIsLoading(false);
+      return;
+    }
+
     const userStr = localStorage.getItem('user');
     const userId  = localStorage.getItem('userId');
     if (!userStr || !userId) { router.push('/auth'); return; }
     const user = JSON.parse(userStr);
-    if (user.role !== 'caregiver') { router.push('/auth'); return; }
-    setCaregiver(user);
-    const all = (mockNotifications.get(userId) || [])
-      .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setNotifications(all);
+    if (user.role !== 'patient') { router.push('/auth'); return; }
+    setPatient(user);
+
+    const hList = mockHealthData.get(userId) || [];
+    if (hList.length) setCurrentHealth(hList[hList.length - 1]);
+
+    const rList = mockRiskAssessments.get(userId) || [];
+    if (rList.length) setCurrentRisk(rList[rList.length - 1]);
+
+    // Load completed tasks for today
+    const todayKey = `tasks_${userId}_${new Date().toDateString()}`;
+    const saved = localStorage.getItem(todayKey);
+    if (saved) setCompletedTasks(JSON.parse(saved));
+
+    setIsLoading(false);
   }, [router]);
 
-  const markRead   = (id: string) => setNotifications(n => n.map(x => x.id===id ? {...x,read:true} : x));
-  const markAllRead= ()           => setNotifications(n => n.map(x => ({...x,read:true})));
-  const del        = (id: string) => setNotifications(n => n.filter(x => x.id!==id));
+  const pendingCount = DAILY_TASKS.length - completedTasks.length;
 
-  const getPatientName = (pid: string) => mockPatients.get(pid)?.name || 'Unknown Patient';
+  if (isLoading) return (
+    <>
+      <style>{STYLES}</style>
+      <div className="loading-screen">
+        <div className="spinner" />
+        <p className="loading-text">Loading your dashboard…</p>
+      </div>
+    </>
+  );
 
-  const filtered = notifications.filter(n => {
-    if (filter === 'unread') return !n.read;
-    if (filter === 'high')   return n.severity === 'high';
-    return true;
-  });
+//   if (!patient) return null;
 
-  const unread = notifications.filter(n => !n.read).length;
-  const highCount = notifications.filter(n => n.severity === 'high').length;
-
-  const formatTime = (date: Date | string) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = (now.getTime() - d.getTime()) / 1000;
-    if (diff < 60)   return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-    if (diff < 86400)return `${Math.floor(diff/3600)}h ago`;
-    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  };
-
-  const sevClass = (s: string) => s === 'high' ? 'high' : s === 'medium' ? 'medium' : 'low';
+  const rc = currentRisk?.riskLevel ?? 'low';
 
   return (
     <>
       <style>{STYLES}</style>
-      <div className="shell">
-        <Sidebar userRole="caregiver" />
-        <div className="main">
-          <Header title="Notifications" userRole="caregiver" />
-          <div className="content">
-            <div className="inner">
+      <div className="inner">
 
-              {/* Page top */}
-              <div className="page-top au">
-                <div>
-                  <div className="page-heading">Notifications</div>
-                  <div className="page-sub">{notifications.length} total · {unread} unread</div>
+              {/* Banner */}
+              <div className="banner au">
+                <div className="banner-body">
+                  <div className="banner-title">Welcome back, {patient.name} 👋</div>
+                  <div className="banner-sub">Your health is our priority. Stay informed, stay healthy.</div>
+                </div>
+                <div className="banner-code">
+                  <div className="banner-code-lbl">Your Code</div>
+                  <div className="banner-code-val">{patient.uniqueCode}</div>
                 </div>
               </div>
 
-              {/* Unread summary */}
-              {unread > 0 && (
-                <div className="alert info au1">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0,marginTop:1}}>
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                  <div>
-                    <div className="alert-title">{unread} unread alert{unread !== 1 ? 's' : ''}</div>
-                    Review them to stay updated on your patients' health.
-                  </div>
+              {/* Stats */}
+              <div className="stats-grid au1">
+                <div className="stat green">
+                  <span className="stat-ico">💧</span>
+                  <div className="stat-val">{currentHealth?.hydrationLevel ?? 0}%</div>
+                  <div className="stat-lbl">Hydration</div>
+                  <div className="stat-sub">{currentHealth?.hydrationStatus ?? 'No data'}</div>
                 </div>
-              )}
+                <div className="stat amber">
+                  <span className="stat-ico">🩺</span>
+                  <div className="stat-val">{currentHealth?.painLevel ?? 0}<span style={{fontSize:14,fontWeight:400}}>/10</span></div>
+                  <div className="stat-lbl">Pain Level</div>
+                  <div className="stat-sub">Self-reported</div>
+                </div>
+                <div className="stat blue">
+                  <span className="stat-ico">😴</span>
+                  <div className="stat-val">{currentHealth?.sleepHours ?? 0}<span style={{fontSize:14,fontWeight:400}}>h</span></div>
+                  <div className="stat-lbl">Sleep</div>
+                  <div className="stat-sub">Last night</div>
+                </div>
+                <div className="stat orange">
+                  <span className="stat-ico">🌡️</span>
+                  <div className="stat-val">{currentHealth?.temperature ?? 37}°</div>
+                  <div className="stat-lbl">Temperature</div>
+                  <div className="stat-sub">Celsius</div>
+                </div>
+              </div>
 
-              {/* Filter bar */}
-              <div className="filter-bar au2">
-                <div className="filter-pills">
-                  {([
-                    {id:'all',    label:'All',           count:notifications.length},
-                    {id:'unread', label:'Unread',         count:unread},
-                    {id:'high',   label:'High Priority',  count:highCount},
-                  ] as {id:FilterType; label:string; count:number}[]).map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => setFilter(f.id)}
-                      className={`pill ${filter===f.id ? `active-${f.id}` : 'inactive'}`}
-                    >
-                      {f.label}
-                      <span className="pill-count">{f.count}</span>
-                    </button>
-                  ))}
+              {/* Daily tasks */}
+              <div className="card au2">
+                <div className="card-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  </svg>
+                  Today's Health Tasks
+                  {pendingCount > 0 && <span className="notif-badge">{pendingCount}</span>}
                 </div>
-                {unread > 0 && (
-                  <button className="mark-all-btn" onClick={markAllRead}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="20 6 9 17 4 12"/><polyline points="20 13 9 24 4 19"/>
-                    </svg>
-                    Mark all read
-                  </button>
+                <div className="tasks-grid">
+                  {DAILY_TASKS.map(task => {
+                    const done = completedTasks.includes(task.id);
+                    return (
+                      <button
+                        key={task.id}
+                        className={`task-btn ${done ? 'done' : 'pending'}`}
+                        onClick={() => router.push(`/patient/tasks/${task.id}`)}
+                      >
+                        {done
+                          ? <span className="task-done-tick"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+                          : <span className="task-pending-dot" />
+                        }
+                        <span className="task-icon">{task.icon}</span>
+                        <div className="task-label">{task.label}</div>
+                        <div className="task-desc">{done ? 'Completed ✓' : task.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Risk Assessment */}
+              <div className="card au3">
+                <div className="card-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  Crisis Risk Assessment
+                </div>
+
+                {currentRisk ? (
+                  <>
+                    <div className="risk-row">
+                      <div>
+                        <div style={{fontSize:12,color:'var(--n400)',marginBottom:4}}>Last updated: {formatDate(currentRisk.date)}</div>
+                        <span className={`risk-badge ${rc}`}>
+                          <span className="risk-dot" />
+                          {rc.charAt(0).toUpperCase() + rc.slice(1)} Risk · {currentRisk.riskScore}/100
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="risk-bar-wrap" style={{marginBottom:6}}>
+                      <div className={`risk-bar ${rc}`} style={{width:`${currentRisk.riskScore}%`}} />
+                    </div>
+
+                    {currentRisk.predictedCrisisIn48h && (
+                      <div className="alert warning">
+                        <span>⚠️</span>
+                        <div>
+                          <div className="alert-title">Crisis predicted within 48 hours</div>
+                          Take preventive measures immediately. Stay hydrated and rest.
+                        </div>
+                      </div>
+                    )}
+
+                    {currentRisk.triggerFactors?.length > 0 && (
+                      <div style={{marginBottom:12}}>
+                        <div style={{fontSize:12,fontWeight:600,color:'var(--n600)',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:8}}>Risk Factors</div>
+                        {currentRisk.triggerFactors.map((f: string, i: number) => (
+                          <div className="factor-item" key={i}><span>•</span>{f}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentRisk.recommendations?.length > 0 && (
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600,color:'var(--n600)',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:8}}>Recommendations</div>
+                        {currentRisk.recommendations.map((r: string, i: number) => (
+                          <div className="rec-item" key={i}><span>✓</span>{r}</div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{textAlign:'center',padding:'24px 0',color:'var(--n400)'}}>
+                    <div style={{fontSize:28,marginBottom:8}}>📋</div>
+                    <div style={{fontSize:14,fontWeight:500}}>No risk data yet</div>
+                    <div style={{fontSize:13,fontWeight:300}}>Complete your daily check-in to get an assessment.</div>
+                  </div>
                 )}
               </div>
 
-              {/* Notification list */}
-              {filtered.length > 0 ? (
-                <div className="au3" style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {/* Group: unread first */}
-                  {filter === 'all' && unread > 0 && (
-                    <>
-                      {/* Unread group */}
-                      <div className="group-label">
-                        <div className="group-line"/>
-                        <span>New</span>
-                        <div className="group-line"/>
+              {/* Today's Health Detail */}
+              {currentHealth && (
+                <div className="card au4">
+                  <div className="card-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5">
+                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                    Today's Health Detail
+                  </div>
+                  <div className="health-grid">
+                    <div className="health-row">
+                      <div>
+                        <div className="health-item-lbl">Fatigue</div>
+                        <div className="bar-row">
+                          <div className="bar-wrap"><div className="bar" style={{width:`${currentHealth.fatigueLevel * 10}%`,background:'#f97316'}}/></div>
+                          <span style={{fontSize:13,fontWeight:600,color:'var(--n700)',minWidth:28}}>{currentHealth.fatigueLevel}/10</span>
+                        </div>
                       </div>
-                      {filtered.filter(n => !n.read).map((n, i) => (
-                        <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
-                      ))}
-                      {filtered.filter(n => n.read).length > 0 && (
-                        <div className="group-label" style={{marginTop:8}}>
-                          <div className="group-line"/>
-                          <span>Earlier</span>
-                          <div className="group-line"/>
+                      <div>
+                        <div className="health-item-lbl">Eye Jaundice</div>
+                        <div className="bar-row">
+                          <div className="bar-wrap"><div className="bar" style={{width:`${currentHealth.eyeJaundiceLevel * 10}%`,background:'#ca8a04'}}/></div>
+                          <span style={{fontSize:13,fontWeight:600,color:'var(--n700)',minWidth:28}}>{currentHealth.eyeJaundiceLevel}/10</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="health-item-lbl">Activity Level</div>
+                        <span className="activity-chip">🏃 {currentHealth.activityLevel}</span>
+                      </div>
+                    </div>
+                    <div className="health-row">
+                      <div>
+                        <div className="health-item-lbl">Medication</div>
+                        <span className={`med-badge ${currentHealth.medicationAdherence ? 'ok' : 'missed'}`}>
+                          {currentHealth.medicationAdherence ? '✓ On Track' : '✗ Missed'}
+                        </span>
+                      </div>
+                      {currentHealth.notes && (
+                        <div>
+                          <div className="health-item-lbl">Notes</div>
+                          <div style={{fontSize:13,color:'var(--n600)',background:'var(--n50)',padding:'8px 10px',borderRadius:10,fontWeight:300,lineHeight:1.5}}>{currentHealth.notes}</div>
                         </div>
                       )}
-                      {filtered.filter(n => n.read).map((n, i) => (
-                        <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
-                      ))}
-                    </>
-                  )}
-
-                  {/* Filtered views: no grouping */}
-                  {filter !== 'all' && filtered.map((n, i) => (
-                    <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
-                  ))}
-                </div>
-              ) : (
-                <div className="card">
-                  <div className="empty">
-                    <div className="empty-icon">{filter === 'unread' ? '✨' : '🔔'}</div>
-                    <div className="empty-title">
-                      {filter === 'unread' ? "You're all caught up!" : 'No notifications'}
-                    </div>
-                    <div className="empty-sub">
-                      {filter === 'unread'
-                        ? 'No unread notifications right now.'
-                        : 'No notifications matching this filter yet.'}
                     </div>
                   </div>
                 </div>
               )}
 
-            </div>
-          </div>
-        </div>
+              {/* Actions */}
+              <div className="actions-grid au5">
+                <button className="action-btn primary" onClick={() => router.push('/patient/checkin')}>
+                  <span className="action-icon">➕</span>
+                  <span>Full Check-in</span>
+                </button>
+                <button className="action-btn secondary" onClick={() => router.push('/patient/trends')}>
+                  <span className="action-icon">📊</span>
+                  <span>Health Trends</span>
+                </button>
+                <button className="action-btn secondary" onClick={() => router.push('/patient/contact')}>
+                  <span className="action-icon">📞</span>
+                  <span>Contact Caregiver</span>
+                </button>
+              </div>
+
       </div>
     </>
-  );
-}
-
-/* ── Notification Card sub-component ── */
-function NotifCard({ n, idx, onRead, onDelete, getPatientName, formatTime, sevClass }: {
-  n: Notification; idx: number;
-  onRead: (id:string)=>void;
-  onDelete: (id:string)=>void;
-  getPatientName: (pid:string)=>string;
-  formatTime: (d:Date|string)=>string;
-  sevClass: (s:string)=>string;
-}) {
-  const sc = sevClass(n.severity);
-  const icon = n.type === 'risk_alert' ? '⚠️' : n.type === 'medication_reminder' ? '💊' : n.type === 'appointment' ? '📅' : 'ℹ️';
-  const iconClass = n.read ? 'read' : sc;
-
-  return (
-    <div
-      className={`notif-card ${sc} ${!n.read ? 'unread' : 'read'}`}
-      style={{animationDelay:`${idx * 0.04}s`, animation:'fadeUp .4s ease both'}}
-      onClick={() => !n.read && onRead(n.id)}
-    >
-      <div className={`notif-icon-wrap ${iconClass}`}>{icon}</div>
-
-      <div className="notif-body">
-        <div className="notif-head">
-          <div className="notif-title">{n.title}</div>
-          <span className={`sev-chip ${sc}`}>{n.severity}</span>
-        </div>
-        <div className="notif-msg">{n.message}</div>
-        <div className="notif-meta">
-          <span className="notif-patient">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-            {getPatientName(n.patientId)}
-          </span>
-          <span className="notif-time">· {formatTime(n.createdAt)}</span>
-        </div>
-      </div>
-
-      <div className="notif-actions">
-        {!n.read && <div className="unread-dot" />}
-        <button
-          className="del-btn"
-          onClick={e => { e.stopPropagation(); onDelete(n.id); }}
-          aria-label="Delete notification"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <path d="M10 11v6M14 11v6"/>
-            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-          </svg>
-        </button>
-      </div>
-    </div>
   );
 }
