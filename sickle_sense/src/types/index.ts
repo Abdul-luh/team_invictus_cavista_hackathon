@@ -28,9 +28,11 @@ export interface HealthData {
   date: Date;
   hydrationLevel: number; // 0-100
   hydrationStatus: 'low' | 'normal' | 'optimal';
-  painLevel: number; // 0-10
+  painLevel: number; // 0-100 percentage
   fatigueLevel: number; // 0-10
   sleepHours: number;
+  sleepStart?: string; // e.g. "22:00"
+  sleepEnd?: string;   // e.g. "06:00"
   temperature: number;
   medicationAdherence: boolean;
   eyeJaundiceLevel: number; // 0-10 (jaundice intensity)
@@ -85,4 +87,19 @@ export interface PatientCaregiverRelationship {
     receiveAlerts: boolean;
     bookAppointments: boolean;
   };
+}
+export interface ClinicalReport {
+  user_id: string;
+  detailed_report: string;
+  metrics: {
+    water_percent_drop: number;
+    bilirubin_percent_rise: number;
+  };
+}
+
+export interface NavItem {
+  label: string;
+  href: string;
+  icon: any; // Using any for LucideIcon to avoid import complexities in types
+  badge?: number;
 }

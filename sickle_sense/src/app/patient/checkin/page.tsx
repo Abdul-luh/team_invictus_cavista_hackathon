@@ -344,7 +344,9 @@ export default function DailyCheckin() {
     hydrationLevel: 50,
     painLevel: 0,
     fatigueLevel: 0,
-    sleepHours: 7,
+    sleepHours: 7.5,
+    sleepStart: '22:00',
+    sleepEnd: '06:00',
     temperature: 37.0,
     medicationAdherence: true,
     eyeJaundiceLevel: 0,
@@ -364,8 +366,6 @@ export default function DailyCheckin() {
   }, [router]);
 
   const handleJaundiceUpdate = (stats: JaundiceStats) => {
-    // Update the jaundice level in the main form state
-    // This connects the AI analysis result to the data sent to the backend/mock
     setFormData(prev => ({ ...prev, eyeJaundiceLevel: stats.current_level }));
   };
 
@@ -376,7 +376,6 @@ export default function DailyCheckin() {
     const newHydrationLevel = stats.progress_percentage || Math.min(100, Math.round((stats.drinks_today * 250 / 2000) * 100));
     setFormData(prev => ({ ...prev, hydrationLevel: newHydrationLevel }));
 
-    // Proactively update latestHealth in localStorage so dashboard updates immediately
     const userId = localStorage.getItem('userId');
     if (userId) {
       const storedLatest = localStorage.getItem('latestHealth');
@@ -384,6 +383,27 @@ export default function DailyCheckin() {
       const updatedLatest = { ...currentLatest, hydrationLevel: newHydrationLevel };
       localStorage.setItem('latestHealth', JSON.stringify(updatedLatest));
     }
+  };
+
+  const calculateSleepDuration = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    const [startH, startM] = start.split(':').map(Number);
+    const [endH, endM] = end.split(':').map(Number);
+
+    let startMin = startH * 60 + startM;
+    let endMin = endH * 60 + endM;
+
+    if (endMin <= startMin) endMin += 24 * 60; // Next day
+
+    return (endMin - startMin) / 60;
+  };
+
+  const handleSleepTimeChange = (type: 'start' | 'end', val: string) => {
+    setFormData(prev => {
+      const next = { ...prev, [type === 'start' ? 'sleepStart' : 'sleepEnd']: val };
+      next.sleepHours = calculateSleepDuration(next.sleepStart || '', next.sleepEnd || '');
+      return next;
+    });
   };
 
   const getRecommendations = (level: string, triggers: string[]): string[] => {
@@ -394,23 +414,12 @@ export default function DailyCheckin() {
     }
     if (triggers.some(t => t.toLowerCase().includes('hydrat'))) {
       recommendations.push('Drink at least 1L of water in the next 2 hours');
-      recommendations.push('Set reminders every 30 minutes to hydrate');
     }
     if (triggers.some(t => t.toLowerCase().includes('pain'))) {
       recommendations.push('Take prescribed pain medication as needed');
-      recommendations.push('Rest and avoid strenuous activities');
-    }
-    if (triggers.some(t => t.toLowerCase().includes('sleep'))) {
-      recommendations.push('Aim for 8+ hours of sleep tonight');
-      recommendations.push('Avoid screens 1 hour before bed');
-    }
-    if (triggers.some(t => t.toLowerCase().includes('temperatur'))) {
-      recommendations.push('Monitor your temperature every 4 hours');
-      recommendations.push('Use cool compress if fever persists');
     }
     if (recommendations.length === 0) {
       recommendations.push('Continue your current health routine');
-      recommendations.push('Stay hydrated and maintain medication schedule');
     }
     return recommendations;
   };
@@ -442,19 +451,6 @@ export default function DailyCheckin() {
     if (!mockRiskAssessments.has(userId)) mockRiskAssessments.set(userId, []);
     mockRiskAssessments.get(userId)!.push(newRisk);
 
-    if (level === 'high' || score > 70) {
-      const caregiverIds = mockRelationships.get(userId) || [];
-      caregiverIds.forEach(caregiverId => {
-        if (!mockNotifications.has(caregiverId)) mockNotifications.set(caregiverId, []);
-        const notification: Notification = {
-          id: `notif_${Date.now()}_${caregiverId}`, caregiverId, patientId: userId, type: 'risk_alert',
-          title: `High Risk Alert: ${patient?.name}`, message: `${patient?.name} has a ${level} risk score (${score}/100). ${triggers[0] || 'Please check in.'}`,
-          severity: 'high', read: false, createdAt: new Date(),
-        };
-        mockNotifications.get(caregiverId)!.push(notification);
-      });
-    }
-
     localStorage.setItem('latestHealth', JSON.stringify(newHealth));
 
     setTimeout(() => {
@@ -464,12 +460,12 @@ export default function DailyCheckin() {
     }, 1500);
   };
 
-  const totalSections = 6; // Adjusted for visible components
+  const totalSections = 6;
   const completedSections = [
     formData.hydrationLevel !== 50,
     formData.medicationAdherence,
     formData.eyeJaundiceLevel > 0,
-    formData.sleepHours !== 7,
+    formData.sleepStart && formData.sleepEnd,
     formData.painLevel > 0,
     formData.notes.length > 0,
   ].filter(Boolean).length;
@@ -478,13 +474,11 @@ export default function DailyCheckin() {
     <>
       <style>{STYLES}</style>
       <div className="inner">
-
-        {/* Header */}
         <div className="page-header fade-in">
           <div className="header-left">
             <h1 className="page-title">Daily Health Check-in</h1>
             <p className="page-description">
-              Help us track your health and predict crises early. This ensures your care team provides the best support.
+              Help us track your health and predict crises early.
             </p>
           </div>
           <div className="progress-tracker">
@@ -495,7 +489,6 @@ export default function DailyCheckin() {
           </div>
         </div>
 
-        {/* Form / Success State */}
         {success ? (
           <div className="success-overlay fade-in">
             <div className="success-icon">
@@ -505,23 +498,15 @@ export default function DailyCheckin() {
             </div>
             <h2 className="success-title">Check-in Complete</h2>
             <p className="success-message">
-              Your health data has been securely recorded. We will notify your care team if any concerns are detected.
+              Your health data has been securely recorded.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="checkin-form">
-
-            {/* Hydration Card */}
             <HydrationCard hydrationLevel={formData.hydrationLevel} onHydrationUpdate={handleHydrationUpdate} />
+            <EyeJaundiceCard onJaundiceUpdate={handleJaundiceUpdate} />
 
-            <EyeJaundiceCard
-              onJaundiceUpdate={handleJaundiceUpdate}
-            />
-
-
-
-            {/* Medication */}
-            <SectionCard icon={<Icons.Pill />} iconClass="green" title="Medication Adherence" sub="Track your sickle cell medications today" animClass="fade-in-1">
+            <SectionCard icon={<Icons.Pill />} iconClass="green" title="Medication Adherence" sub="Track your sickle cell medications today">
               <div className="med-list">
                 {medications.map(m => (
                   <div key={m.id} className={`med-item ${m.taken ? 'completed' : ''}`} onClick={() => toggleMedication(m.id)}>
@@ -531,44 +516,45 @@ export default function DailyCheckin() {
                     <div className="med-info">
                       <div className="med-name">{m.name}</div>
                       <div className="med-time">{m.time}</div>
-                      {m.status && <div className="med-status" style={{ color: '#16a34a' }}>{m.status}</div>}
                     </div>
                   </div>
                 ))}
               </div>
             </SectionCard>
 
-
-
-            {/* Sleep */}
-            <SectionCard icon={<Icons.Moon />} iconClass="purple" title="Sleep Duration" sub="Hours of sleep received last night" animClass="fade-in-3">
+            <SectionCard icon={<Icons.Moon />} iconClass="purple" title="Sleep Tracking" sub="When did you sleep and for how long?">
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: 'var(--gray-500)', marginBottom: '4px', display: 'block' }}>Sleep Start</label>
+                  <input type="time" value={formData.sleepStart} onChange={(e) => handleSleepTimeChange('start', e.target.value)} className="textarea" style={{ padding: '0.75rem' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: 'var(--gray-500)', marginBottom: '4px', display: 'block' }}>Sleep End</label>
+                  <input type="time" value={formData.sleepEnd} onChange={(e) => handleSleepTimeChange('end', e.target.value)} className="textarea" style={{ padding: '0.75rem' }} />
+                </div>
+              </div>
               <div className="number-input-group">
                 <button type="button" className="number-stepper" onClick={() => updateField('sleepHours')(Math.max(0, formData.sleepHours - 0.5))}>−</button>
-                <input type="number" min={0} max={24} step={0.5} value={formData.sleepHours} onChange={(e) => updateField('sleepHours')(parseFloat(e.target.value))} className="number-input" />
+                <input type="number" min={0} max={24} step={0.5} value={formData.sleepHours} readOnly className="number-input" />
                 <button type="button" className="number-stepper" onClick={() => updateField('sleepHours')(Math.min(24, formData.sleepHours + 0.5))}>+</button>
               </div>
-              {formData.sleepHours < 6 && <span className="status-badge danger">Low sleep — Aim for 7-9 hours</span>}
-              {formData.sleepHours >= 7 && formData.sleepHours <= 9 && <span className="status-badge good">Optimal sleep duration</span>}
+              <div style={{ fontSize: '13px', color: 'var(--gray-500)', marginTop: '8px' }}>Calculated sleep: <strong>{formData.sleepHours.toFixed(1)} hours</strong></div>
             </SectionCard>
 
-            {/* Pain */}
-            <SectionCard icon={<Icons.Activity />} iconClass="red" title="Pain Level" sub="Assess your current physical discomfort (0 = no pain, 10 = extreme)" animClass="fade-in-4">
-              <SliderField label="Pain Intensity" value={formData.painLevel} min={0} max={10} colorClass="pain" onChange={updateField('painLevel')} />
+            <SectionCard icon={<Icons.Activity />} iconClass="red" title="Pain Level" sub="Assess your current physical discomfort (0% = no pain, 100% = extreme)">
+              <SliderField label="Pain Intensity" value={formData.painLevel} min={0} max={100} unit="%" colorClass="pain" onChange={updateField('painLevel')} />
             </SectionCard>
 
-            {/* Notes */}
-            <SectionCard icon={<Icons.Notes />} iconClass="blue" title="Additional Notes" sub="Share any other symptoms or concerns with your care team" animClass="fade-in-5">
-              <textarea className="textarea" placeholder="E.g., Feeling dizzy, unusual pain location, or specific questions..." value={formData.notes} onChange={(e) => updateField('notes')(e.target.value)} rows={4} />
+            <SectionCard icon={<Icons.Notes />} iconClass="blue" title="Additional Notes" sub="Share any other symptoms or concerns">
+              <textarea className="textarea" placeholder="E.g., Feeling dizzy..." value={formData.notes} onChange={(e) => updateField('notes')(e.target.value)} rows={4} />
             </SectionCard>
 
-            {/* Actions */}
-            <div className="button-group fade-in-5">
+            <div className="button-group">
               <button type="submit" className="btn-primary" disabled={isSubmitting}>
                 {isSubmitting ? <><span className="spinner" /> Processing...</> : 'Complete Check-in'}
               </button>
-              <button type="button" className="btn-secondary" onClick={() => router.back()}>Cancel</button>
+              <button type="button" className="btn-secondary" onClick={() => router.push('/patient/dashboard')}>Cancel</button>
             </div>
-
           </form>
         )}
       </div>

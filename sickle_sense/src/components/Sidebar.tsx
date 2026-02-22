@@ -41,10 +41,10 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
     { label: 'Dashboard', href: '/patient/dashboard', icon: LayoutDashboard },
     { label: 'Daily Check-in', href: '/patient/checkin', icon: ClipboardCheck },
     { label: 'Appointments', href: '/patient/appointments', icon: Calendar },
-    { label: 'Health Trends', href: '/patient/trends', icon: TrendingUp },
-    { label: 'Pharmacy', href: '/patient/pharmarcy', icon: Pill },
-    { label: 'Community', href: '/patient/community', icon: Users },
-    { label: 'Settings', href: '/patient/settings', icon: Settings },
+    // { label: 'Health Trends', href: '/patient/trends', icon: TrendingUp },
+    { label: 'Pharmacy', href: '/patient/pharmacy', icon: Pill },
+    // { label: 'Community', href: '/patient/community', icon: Users },
+    // { label: 'Settings', href: '/patient/settings', icon: Settings },
   ];
 
   const caregiverNav: NavItem[] = [
