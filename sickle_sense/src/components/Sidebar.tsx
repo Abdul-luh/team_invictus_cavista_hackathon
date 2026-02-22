@@ -2,13 +2,27 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
-import { ShieldPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ShieldPlus,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  ClipboardCheck,
+  Calendar,
+  TrendingUp,
+  Pill,
+  Users,
+  Settings,
+  Bell,
+  FileText,
+  User,
+  LucideIcon
+} from "lucide-react";
 
 interface NavItem {
   label: string;
   href: string;
-  icon: string; // emoji or simple string icon
+  icon: LucideIcon;
   badge?: number;
 }
 
@@ -24,22 +38,21 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
   // For brevity, we'll keep the notifications logic unchanged
 
   const patientNav: NavItem[] = [
-    { label: 'Dashboard', href: '/patient/dashboard', icon: '📊' },
-    { label: 'Daily Check-in', href: '/patient/checkin', icon: '📋' },
-    { label: 'Health History', href: '/patient/history', icon: '📈' },
-    { label: 'Appointments', href: '/patient/appointments', icon: '📅' },
-    { label: 'Caregivers', href: '/patient/caregivers', icon: '🤝' },
-    { label: 'Resources', href: '/patient/resources', icon: '📚' },
-    { label: 'Tasks', href: '/patient/tasks', icon: '✅', badge: 0 }, // replace with actual badge logic
-    { label: 'Pharmacy', href: '/patient/pharmarcy', icon: '✅', badge: 0 }, // replace with actual badge logic
+    { label: 'Dashboard', href: '/patient/dashboard', icon: LayoutDashboard },
+    { label: 'Daily Check-in', href: '/patient/checkin', icon: ClipboardCheck },
+    { label: 'Appointments', href: '/patient/appointments', icon: Calendar },
+    { label: 'Health Trends', href: '/patient/trends', icon: TrendingUp },
+    { label: 'Pharmacy', href: '/patient/pharmarcy', icon: Pill },
+    { label: 'Community', href: '/patient/community', icon: Users },
+    { label: 'Settings', href: '/patient/settings', icon: Settings },
   ];
 
   const caregiverNav: NavItem[] = [
-    { label: 'Dashboard', href: '/caregiver/dashboard', icon: '📊' },
-    { label: 'Patients', href: '/caregiver/patients', icon: '👥' },
-    { label: 'Notifications', href: '/caregiver/notifications', icon: '🔔' },
-    { label: 'Appointments', href: '/caregiver/appointments', icon: '📅' },
-    { label: 'Health Records', href: '/caregiver/records', icon: '📁' },
+    { label: 'Dashboard', href: '/caregiver/dashboard', icon: LayoutDashboard },
+    { label: 'Patients', href: '/caregiver/patients', icon: Users },
+    { label: 'Notifications', href: '/caregiver/notifications', icon: Bell },
+    { label: 'Appointments', href: '/caregiver/appointments', icon: Calendar },
+    { label: 'Health Records', href: '/caregiver/records', icon: FileText },
   ];
 
   const navItems = userRole === 'patient' ? patientNav : caregiverNav;
@@ -52,13 +65,11 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
           background: white;
           border-right: 1px solid #e5e7eb;
           height: 100vh;
-          position: fixed;
-          top: 0;
-          left: 0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           display: flex;
           flex-direction: column;
           z-index: 100;
+          flex-shrink: 0;
         }
 
         .sidebar-header {
@@ -74,7 +85,7 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          color: #0369a1;
+          color: #16a34a;
         }
 
         .logo-text {
@@ -102,13 +113,13 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
         }
 
         .nav-item:hover {
-          background: #f8fafc;
-          color: #0f172a;
+          background: #f0fdf4;
+          color: #111827;
         }
 
         .nav-item.active {
-          background: #f0f9ff;
-          color: #0284c7;
+          background: #f0fdf4;
+          color: #16a34a;
           font-weight: 600;
         }
 
@@ -117,19 +128,44 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
           font-size: 0.9375rem;
         }
 
-        .nav-badge {
-          background: #ef4444;
-          color: white;
-          font-size: 0.7rem;
-          padding: 2px 6px;
-          border-radius: 10px;
-          margin-left: auto;
-          display: ${isCollapsed ? 'none' : 'block'};
+        .nav-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          flex-shrink: 0;
         }
 
         .sidebar-footer {
-          padding: 1.5rem 1rem;
+          padding: 1.25rem;
           border-top: 1px solid #f3f4f6;
+        }
+
+        .footer-profile {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.5rem;
+          border-radius: 8px;
+          transition: background 0.2s;
+          cursor: pointer;
+        }
+
+        .footer-profile:hover {
+          background: #f0fdf4;
+        }
+
+        .avatar-circle {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #f0fdf4;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #16a34a;
+          border: 1px solid #dcfce7;
         }
 
         .collapse-toggle {
@@ -140,26 +176,55 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: color 0.2s;
+        }
+
+        .collapse-toggle:hover {
+          color: #16a34a;
+        }
+
+        @media (max-width: 1024px) {
+          .sidebar {
+            width: ${isCollapsed ? '0px' : '280px'}; /* On mobile, we hide it completely when collapsed */
+            overflow: hidden;
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            background: white;
+            z-index: 1000;
+          }
+          .sidebar-overlay {
+            display: ${isCollapsed ? 'none' : 'block'};
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+          }
         }
       `}</style>
 
+      <div className="sidebar-overlay" onClick={onToggle} />
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo-area">
-            <ShieldPlus size={28} strokeWidth={2.5} />
+            <ShieldPlus size={24} strokeWidth={2.5} />
             <span className="logo-text">SickleSense</span>
           </div>
           <button className="collapse-toggle" onClick={onToggle}>
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
 
         <nav className="nav-section">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
+            const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href} className={`nav-item ${isActive ? 'active' : ''}`}>
-                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                <span className="nav-icon">
+                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                </span>
                 <span className="nav-label">{item.label}</span>
                 {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
               </Link>
@@ -168,9 +233,9 @@ export const Sidebar = ({ userRole, isCollapsed, onToggle }: SidebarProps) => {
         </nav>
 
         <div className="sidebar-footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1'}}>
-              <span style={{ fontSize: 16 }}>👤</span>
+          <div className="footer-profile">
+            <div className="avatar-circle">
+              <User size={18} />
             </div>
             {!isCollapsed && <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>My Account</span>}
           </div>

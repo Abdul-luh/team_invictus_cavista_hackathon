@@ -9,31 +9,48 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
   const sidebarWidth = isSidebarCollapsed ? '80px' : '280px';
 
   return (
-    <div className="shell" style={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
-      <Sidebar 
-        userRole="patient" 
+    <div className="patient-shell">
+      <Sidebar
+        userRole="patient"
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      
-      {/* Main content area – margin adjusts with sidebar width */}
-      <div 
-        className="main" 
-        style={{ 
-          flex: 1, 
-          marginLeft: sidebarWidth,
-          display: 'flex', 
-          flexDirection: 'column',
-          transition: 'margin-left 0.3s ease'
-        }}
-      >
-        <Header title="Patient Dashboard" userRole="patient" />
-        
-        <main className="content" style={{ padding: '2rem', flex: 1 }}>
+
+      <div className="patient-main">
+        <Header
+          title="Patient Dashboard"
+          userRole="patient"
+          onMenuClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+
+        <main className="patient-content">
           {children}
         </main>
       </div>
 
+      <style jsx>{`
+        .patient-shell {
+          display: flex;
+          height: 100vh;
+          overflow: hidden;
+          background-color: #f9fafb;
+        }
+
+        .patient-main {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .patient-content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 2rem;
+        }
+      `}</style>
       <style jsx global>{`
         body { margin: 0; }
       `}</style>

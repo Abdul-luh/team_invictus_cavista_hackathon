@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+<!-- Sending payload: {email: 'amOkn@gmail.com', password: '12345678', full_name: 'Aminah Okonko', role: 'patient', phone: '+2347033824496', …}
+page.tsx:511 Response data: {id: 5, email: 'amOkn@gmail.com', role: 'patient', patient_code: 'SC-6101', linked_patient_code: null}email: "amOkn@gmail.com"id: 5linked_patient_code: nullpatient_code: "SC-6101"role: "patient"[[Prototype]]: Object
+page.tsx:503 Sending payload: {email: 'amOk@gmail.com', password: '12345678', full_name: 'Aminah Okonko', role: 'patient', phone: '+2347033824496', …}
+page.tsx:511 Response data: {id: 6, email: 'amOk@gmail.com', role: 'patient', patient_code: 'SC-6596', linked_patient_code: null} -->

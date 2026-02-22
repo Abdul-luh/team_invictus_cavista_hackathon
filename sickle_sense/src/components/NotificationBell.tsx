@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Bell, CheckCircle, AlertTriangle, Info, Pin } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -152,16 +153,16 @@ export const NotificationBell = () => {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'task': return '✅';
-      case 'alert': return '⚠️';
-      case 'reminder': return '🔔';
-      default: return '📌';
+      case 'task': return <CheckCircle size={18} className="text-green-500" />;
+      case 'alert': return <AlertTriangle size={18} className="text-yellow-500" />;
+      case 'reminder': return <Bell size={18} className="text-blue-500" />;
+      default: return <Pin size={18} className="text-gray-500" />;
     }
   };
 
   const getTimeAgo = (timestamp: Date) => {
     const seconds = Math.floor((new Date().getTime() - timestamp.getTime()) / 1000);
-    
+
     if (seconds < 60) return 'just now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -348,11 +349,11 @@ export const NotificationBell = () => {
       `}</style>
 
       <div className="notification-container" ref={dropdownRef}>
-        <button 
+        <button
           className="notification-bell"
           onClick={() => setShowDropdown(!showDropdown)}
         >
-          🔔
+          <Bell size={20} />
           {unreadCount > 0 && (
             <span className="notification-badge">{unreadCount}</span>
           )}
@@ -363,7 +364,7 @@ export const NotificationBell = () => {
             <div className="notification-header">
               <h3>Notifications</h3>
               {unreadCount > 0 && (
-                <button 
+                <button
                   className="mark-read"
                   onClick={markAllAsRead}
                 >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { mockPatients, mockCaregivers } from '@/lib/mockData';
 
@@ -348,7 +348,7 @@ const STYLES = `
 
 function PasswordInput({
   placeholder, value, onChange, error
-}: { placeholder?:string; value:string; onChange:(e:React.ChangeEvent<HTMLInputElement>)=>void; error?:string }) {
+}: { placeholder?: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string }) {
   const [show, setShow] = useState(false);
   return (
     <div className="input-wrapper">
@@ -363,14 +363,14 @@ function PasswordInput({
       <button type="button" className="eye-btn" onClick={() => setShow(!show)}>
         {show ? (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-            <line x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+            <line x1="1" y1="1" x2="23" y2="23" />
           </svg>
         ) : (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
           </svg>
         )}
       </button>
@@ -378,12 +378,12 @@ function PasswordInput({
   );
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const role = searchParams.get('role') as 'patient' | 'caregiver' | null;
 
-  const [formData, setFormData] = useState({ email:'', password:'' });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -404,184 +404,213 @@ export default function LoginPage() {
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
     setIsLoading(true);
-    setTimeout(() => {
-      let user = null;
-      if (role === 'patient') {
-        for (const [id, patient] of mockPatients) {
-          if (patient.email === formData.email) { user = { ...patient, id }; break; }
-        }
-      } else if (role === 'caregiver') {
-        for (const [id, caregiver] of mockCaregivers) {
-          if (caregiver.email === formData.email) { user = { ...caregiver, id }; break; }
-        }
+    setErrors({});
+
+    try {
+      const response = await fetch('https://team-invictus-cavista-hackathon.onrender.com/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          role: role,
+        }),
+      });
+
+      const data = await response.json();
+      console.log("Login Response:", data);
+
+      if (!response.ok) {
+        setErrors({ general: data.message || data.error || 'Login failed. Please try again.' });
+        setIsLoading(false);
+        return;
       }
-      if (!user) {
-        setErrors({ general: `No ${role} account found with this email` });
-        setIsLoading(false); return;
+      console.log(data);
+
+      // Success – store token and user data
+      const token = data.token || (typeof window !== 'undefined' ? localStorage.getItem('authToken') : null) || 'demo-token';
+      const user = data.user || data;
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('userId', String(data.id));
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('email', data.email);
       }
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('userId', user.id);
-      const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('role', user.role);
-      localStorage.setItem('email', user.email);
+
       setIsLoading(false);
-      router.push(role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
-    }, 1000);
+      router.push(user.role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
+    } catch (error) {
+      setErrors({ general: 'Network error. Please check your connection.' });
+      setIsLoading(false);
+    }
   };
 
   if (!role) {
     return (
-      <>
-        <style>{STYLES}</style>
-        <div className="invalid-state">
-          <span style={{fontSize:32}}>⚠️</span>
-          <p style={{color:'#6b7280',fontSize:15}}>Invalid role. Please go back and select a role.</p>
-          <a href="/auth" style={{color:'#16a34a',fontWeight:600,fontSize:14}}>← Go back</a>
-        </div>
-      </>
+      <div className="invalid-state">
+        <span style={{ fontSize: 32 }}>⚠️</span>
+        <p style={{ color: '#6b7280', fontSize: 15 }}>Invalid role. Please go back and select a role.</p>
+        <a href="/auth" style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>← Go back</a>
+      </div>
     );
   }
 
   return (
-    <>
-      <style>{STYLES}</style>
-      <div className="page">
-        <div className="blob blob-tl" />
-        <div className="blob blob-br" />
-        <div className="grid-bg" />
+    <div className="page">
+      <div className="blob blob-tl" />
+      <div className="blob blob-br" />
+      <div className="grid-bg" />
 
-        <div className="content">
-          {/* Header */}
-          <div className="page-header">
-            <a href="/auth" className="back-link">
-              <span className="back-arrow">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </span>
-              Back
-            </a>
+      <div className="content">
+        {/* Header */}
+        <div className="page-header">
+          <a href="/auth" className="back-link">
+            <span className="back-arrow">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            Back
+          </a>
 
-            <div className="logo-row">
-              <div className="logo-icon"><span className="logo-letter">S</span></div>
-              <span className="logo-name">SickleSense</span>
-            </div>
-
-            <div className="welcome-text">
-              <h1 className="page-title">
-                Welcome <span className="title-accent">back</span>
-              </h1>
-              <p className="page-sub">
-                Sign in to your {role === 'patient' ? 'patient' : 'caregiver'} account
-              </p>
-            </div>
+          <div className="logo-row">
+            <div className="logo-icon"><span className="logo-letter">S</span></div>
+            <span className="logo-name">SickleSense</span>
           </div>
 
-          {/* Form card */}
-          <div className="form-card">
-            <div style={{display:'flex',justifyContent:'center'}}>
-              <span className="role-badge">
-                <span className="role-dot" />
-                {role === 'patient' ? '👤 Signing in as Patient' : '🤝 Signing in as Caregiver'}
-              </span>
+          <div className="welcome-text">
+            <h1 className="page-title">
+              Welcome <span className="title-accent">back</span>
+            </h1>
+            <p className="page-sub">
+              Sign in to your {role === 'patient' ? 'patient' : 'caregiver'} account
+            </p>
+          </div>
+        </div>
+
+        {/* Form card */}
+        <div className="form-card">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <span className="role-badge">
+              <span className="role-dot" />
+              {role === 'patient' ? '👤 Signing in as Patient' : '🤝 Signing in as Caregiver'}
+            </span>
+          </div>
+
+          {errors.general && (
+            <div className="alert alert-error">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {errors.general}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Email */}
+            <div className="field-group">
+              <label className="field-label">Email Address</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
+                className={`field-input ${errors.email ? 'error' : ''}`}
+              />
+              {errors.email && (
+                <span className="field-error">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
+                    <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  {errors.email}
+                </span>
+              )}
             </div>
 
-            {errors.general && (
-              <div className="alert alert-error">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0,marginTop:1}}>
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                {errors.general}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} noValidate>
-              {/* Email */}
-              <div className="field-group">
-                <label className="field-label">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
-                  className={`field-input ${errors.email ? 'error' : ''}`}
-                />
-                {errors.email && (
-                  <span className="field-error">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444"/>
-                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round"/>
-                    </svg>
-                    {errors.email}
-                  </span>
-                )}
-              </div>
-
-              {/* Password */}
-              <div className="field-group">
-                <label className="field-label">Password</label>
-                <PasswordInput
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
-                  error={errors.password}
-                />
-                {errors.password && (
-                  <span className="field-error">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444"/>
-                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round"/>
-                    </svg>
-                    {errors.password}
-                  </span>
-                )}
-              </div>
-
-              <div className="forgot-row">
-                <a href="#" className="forgot-link">Forgot password?</a>
-              </div>
-
-              <button type="submit" className="btn-submit" disabled={isLoading}>
-                {isLoading && <span className="spinner" />}
-                {isLoading ? 'Signing in…' : 'Sign In →'}
-              </button>
-
-              <p className="form-footer">
-                Don't have an account?{' '}
-                <a href={`/auth/register?role=${role}`} className="form-link">Create one here</a>
-              </p>
-            </form>
-
-            {/* Demo credentials */}
-            <div className="demo-card">
-              <div className="demo-title">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                Demo accounts
-              </div>
-              {(['patient', 'caregiver'] as const).map(r => (
-                <div className="demo-row" key={r}>
-                  <span className="demo-chip">{r === 'patient' ? '👤 Patient' : '🤝 Caregiver'}</span>
-                  <span className="demo-email">{DEMO[r]}</span>
-                  <button
-                    type="button"
-                    className="demo-use-btn"
-                    onClick={() => useDemoCredentials(r)}
-                  >
-                    Use
-                  </button>
-                </div>
-              ))}
+            {/* Password */}
+            <div className="field-group">
+              <label className="field-label">Password</label>
+              <PasswordInput
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
+                error={errors.password}
+              />
+              {errors.password && (
+                <span className="field-error">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
+                    <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  {errors.password}
+                </span>
+              )}
             </div>
+
+            <div className="forgot-row">
+              <a href="#" className="forgot-link">Forgot password?</a>
+            </div>
+
+            <button type="submit" className="btn-submit" disabled={isLoading}>
+              {isLoading && <span className="spinner" />}
+              {isLoading ? 'Signing in…' : 'Sign In →'}
+            </button>
+
+            <p className="form-footer">
+              Don't have an account?{' '}
+              <a href={`/auth/register?role=${role}`} className="form-link">Create one here</a>
+            </p>
+          </form>
+
+          {/* Demo credentials */}
+          <div className="demo-card">
+            <div className="demo-title">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              Demo accounts
+            </div>
+            {(['patient', 'caregiver'] as const).map(r => (
+              <div className="demo-row" key={r}>
+                <span className="demo-chip">{r === 'patient' ? '👤 Patient' : '🤝 Caregiver'}</span>
+                <span className="demo-email">{DEMO[r]}</span>
+                <button
+                  type="button"
+                  className="demo-use-btn"
+                  onClick={() => useDemoCredentials(r)}
+                >
+                  Use
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <>
+      <style>{STYLES}</style>
+      <Suspense fallback={
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fefb', fontFamily: 'DM Sans, sans-serif' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ width: 32, height: 32, borderColor: '#dcfce7', borderTopColor: '#16a34a', margin: '0 auto 16px' }} />
+            <p style={{ color: '#6b7280', fontSize: 14 }}>Preparing login...</p>
+          </div>
+        </div>
+      }>
+        <LoginContent />
+      </Suspense>
     </>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Header, Sidebar } from '@/components';
 import { mockPatients, mockAppointments } from '@/lib/mockData';
 import { Patient, Appointment } from '@/types';
 import { formatDate, formatTime } from '@/lib/utils';
@@ -22,9 +21,6 @@ const STYLES = `
   }
   body{font-family:'DM Sans',sans-serif;background:var(--n50);}
 
-  .shell{display:flex;min-height:100svh;}
-  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
-  .content{flex:1;overflow-y:auto;padding:clamp(16px,3vw,28px);}
   .inner{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:clamp(14px,2vw,20px);}
 
   /* Page header row */
@@ -201,16 +197,16 @@ const STYLES = `
 `;
 
 type FormData = {
-  doctorName:string; facility:string; date:string;
-  time:string; reason:string; notes:string;
+  doctorName: string; facility: string; date: string;
+  time: string; reason: string; notes: string;
 };
 
-function FieldGroup({label,required,error,children}:{label:string;required?:boolean;error?:string;children:React.ReactNode}) {
+function FieldGroup({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <div className="field">
       <label className="field-label">{label}{required && <span className="req">*</span>}</label>
       {children}
-      {error && <span className="ferr"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="#ef4444"/><path d="M5 3v2.5M5 6.5v.5" stroke="#ef4444" strokeWidth="1" strokeLinecap="round"/></svg>{error}</span>}
+      {error && <span className="ferr"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="#ef4444" /><path d="M5 3v2.5M5 6.5v.5" stroke="#ef4444" strokeWidth="1" strokeLinecap="round" /></svg>{error}</span>}
     </div>
   );
 }
@@ -222,13 +218,13 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState('');
-  const [formData, setFormData] = useState<FormData>({ doctorName:'', facility:'', date:'', time:'', reason:'', notes:'' });
-  const [errors, setErrors] = useState<Record<string,string>>({});
+  const [formData, setFormData] = useState<FormData>({ doctorName: '', facility: '', date: '', time: '', reason: '', notes: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
-    const userId  = localStorage.getItem('userId');
+    const userId = localStorage.getItem('userId');
     if (!userStr || !userId) { router.push('/auth'); return; }
     const user = JSON.parse(userStr);
     if (user.role !== 'caregiver') { router.push('/auth'); return; }
@@ -251,13 +247,13 @@ export default function AppointmentsPage() {
     setFormData(p => ({ ...p, [k]: e.target.value }));
 
   const validate = () => {
-    const e: Record<string,string> = {};
+    const e: Record<string, string> = {};
     if (!formData.doctorName.trim()) e.doctorName = 'Doctor name is required';
-    if (!formData.facility.trim())   e.facility   = 'Facility is required';
-    if (!formData.date)              e.date        = 'Date is required';
+    if (!formData.facility.trim()) e.facility = 'Facility is required';
+    if (!formData.date) e.date = 'Date is required';
     else if (new Date(formData.date) < new Date()) e.date = 'Date must be in the future';
-    if (!formData.time)              e.time        = 'Time is required';
-    if (!formData.reason.trim())     e.reason      = 'Reason is required';
+    if (!formData.time) e.time = 'Time is required';
+    if (!formData.reason.trim()) e.reason = 'Reason is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -266,21 +262,21 @@ export default function AppointmentsPage() {
     e.preventDefault();
     if (!validate()) return;
     const apt: Appointment = {
-      id:`apt_${Date.now()}`,
-      patientId:selectedPatient,
-      caregiverId:caregiver.id,
-      doctorName:formData.doctorName,
-      facility:formData.facility,
-      date:new Date(formData.date),
-      time:formData.time,
-      reason:formData.reason,
-      status:'scheduled',
-      notes:formData.notes,
+      id: `apt_${Date.now()}`,
+      patientId: selectedPatient,
+      caregiverId: caregiver.id,
+      doctorName: formData.doctorName,
+      facility: formData.facility,
+      date: new Date(formData.date),
+      time: formData.time,
+      reason: formData.reason,
+      status: 'scheduled',
+      notes: formData.notes,
     };
     if (!mockAppointments.has(selectedPatient)) mockAppointments.set(selectedPatient, []);
     mockAppointments.get(selectedPatient)!.push(apt);
     setAppointments([apt, ...appointments]);
-    setFormData({ doctorName:'', facility:'', date:'', time:'', reason:'', notes:'' });
+    setFormData({ doctorName: '', facility: '', date: '', time: '', reason: '', notes: '' });
     setShowForm(false);
     const name = linkedPatients.find(p => p.id === selectedPatient)?.name;
     setSuccessMessage(`Appointment booked for ${name}`);
@@ -290,203 +286,192 @@ export default function AppointmentsPage() {
   const getPatientName = (pid: string) => linkedPatients.find(p => p.id === pid)?.name || 'Unknown';
 
   const upcoming = appointments.filter(a => new Date(a.date) >= new Date() && a.status === 'scheduled');
-  const past     = appointments.filter(a => new Date(a.date) < new Date()  || a.status === 'completed');
+  const past = appointments.filter(a => new Date(a.date) < new Date() || a.status === 'completed');
 
   const AptDate = ({ date }: { date: Date | string }) => {
     const d = new Date(date);
     return (
       <div className="apt-date-block">
         <div className="apt-day">{d.getDate()}</div>
-        <div className="apt-mon">{d.toLocaleString('default',{month:'short'})}</div>
+        <div className="apt-mon">{d.toLocaleString('default', { month: 'short' })}</div>
       </div>
     );
   };
 
   return (
-    <>
-      <style>{STYLES}</style>
-      <div className="shell">
-        <Sidebar userRole="caregiver" />
-        <div className="main">
-          <Header title="Appointments" userRole="caregiver" />
-          <div className="content">
-            <div className="inner">
+    <div className="inner">
 
-              {/* Page top */}
-              <div className="page-top au">
-                <div>
-                  <div className="page-heading">Appointments</div>
-                  <div className="page-sub">{upcoming.length} upcoming · {past.length} past</div>
+      {/* Page top */}
+      <div className="page-top au">
+        <div>
+          <div className="page-heading">Appointments</div>
+          <div className="page-sub">{upcoming.length} upcoming · {past.length} past</div>
+        </div>
+        <button
+          className={`btn ${showForm ? 'btn-cancel' : 'btn-primary'}`}
+          onClick={() => setShowForm(!showForm)}
+        >
+          {showForm ? (
+            <><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg> Cancel</>
+          ) : (
+            <><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg> Book Appointment</>
+          )}
+        </button>
+      </div>
+
+      {/* Success alert */}
+      {successMessage && (
+        <div className="alert success au">
+          <span>✓</span>
+          <div><div className="alert-title">Booked!</div>{successMessage}</div>
+        </div>
+      )}
+
+      {/* Booking form */}
+      {showForm && (
+        <div className="card slide-down">
+          <div className="card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            New Appointment
+          </div>
+
+          <form onSubmit={handleSubmit} noValidate>
+            <div className="sec-div"><div className="sec-line" /><span className="sec-txt">Patient & Doctor</span><div className="sec-line" /></div>
+
+            <div className="form-grid" style={{ marginBottom: 14 }}>
+              <div className="field col-full">
+                <label className="field-label">Patient <span className="req">*</span></label>
+                <div className="sel-wrap">
+                  <select value={selectedPatient} onChange={e => setSelectedPatient(e.target.value)} className="ds-select">
+                    {linkedPatients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <span className="sel-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
                 </div>
-                <button
-                  className={`btn ${showForm ? 'btn-cancel' : 'btn-primary'}`}
-                  onClick={() => setShowForm(!showForm)}
-                >
-                  {showForm ? (
-                    <><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> Cancel</>
-                  ) : (
-                    <><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> Book Appointment</>
-                  )}
-                </button>
               </div>
 
-              {/* Success alert */}
-              {successMessage && (
-                <div className="alert success au">
-                  <span>✓</span>
-                  <div><div className="alert-title">Booked!</div>{successMessage}</div>
-                </div>
-              )}
+              <FieldGroup label="Doctor Name" required error={errors.doctorName}>
+                <input className={`ds-input ${errors.doctorName ? 'err' : ''}`} placeholder="Dr. Oluwaseun Adeyemi" value={formData.doctorName} onChange={set('doctorName')} />
+              </FieldGroup>
 
-              {/* Booking form */}
-              {showForm && (
-                <div className="card slide-down">
-                  <div className="card-title">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                      <line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
-                    New Appointment
-                  </div>
-
-                  <form onSubmit={handleSubmit} noValidate>
-                    <div className="sec-div"><div className="sec-line"/><span className="sec-txt">Patient & Doctor</span><div className="sec-line"/></div>
-
-                    <div className="form-grid" style={{marginBottom:14}}>
-                      <div className="field col-full">
-                        <label className="field-label">Patient <span className="req">*</span></label>
-                        <div className="sel-wrap">
-                          <select value={selectedPatient} onChange={e => setSelectedPatient(e.target.value)} className="ds-select">
-                            {linkedPatients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                          </select>
-                          <span className="sel-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
-                        </div>
-                      </div>
-
-                      <FieldGroup label="Doctor Name" required error={errors.doctorName}>
-                        <input className={`ds-input ${errors.doctorName ? 'err' : ''}`} placeholder="Dr. Oluwaseun Adeyemi" value={formData.doctorName} onChange={set('doctorName')} />
-                      </FieldGroup>
-
-                      <FieldGroup label="Healthcare Facility" required error={errors.facility}>
-                        <input className={`ds-input ${errors.facility ? 'err' : ''}`} placeholder="Lagos University Teaching Hospital" value={formData.facility} onChange={set('facility')} />
-                      </FieldGroup>
-                    </div>
-
-                    <div className="sec-div"><div className="sec-line"/><span className="sec-txt">Date & Time</span><div className="sec-line"/></div>
-
-                    <div className="form-grid" style={{marginBottom:14}}>
-                      <FieldGroup label="Date" required error={errors.date}>
-                        <input type="date" className={`ds-input ${errors.date ? 'err' : ''}`} value={formData.date} onChange={set('date')} />
-                      </FieldGroup>
-
-                      <FieldGroup label="Time" required error={errors.time}>
-                        <input type="time" className={`ds-input ${errors.time ? 'err' : ''}`} value={formData.time} onChange={set('time')} />
-                      </FieldGroup>
-                    </div>
-
-                    <div className="sec-div"><div className="sec-line"/><span className="sec-txt">Details</span><div className="sec-line"/></div>
-
-                    <div className="form-grid" style={{marginBottom:20}}>
-                      <FieldGroup label="Reason" required error={errors.reason}>
-                        <input className={`ds-input ${errors.reason ? 'err' : ''}`} placeholder="e.g. Routine check-up, Follow-up" value={formData.reason} onChange={set('reason')} />
-                      </FieldGroup>
-
-                      <div className="field">
-                        <label className="field-label">Additional Notes</label>
-                        <textarea className="ds-textarea" placeholder="Any additional information…" value={formData.notes} onChange={set('notes')} />
-                      </div>
-                    </div>
-
-                    <button type="submit" className="btn btn-primary btn-full">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                      Confirm Appointment
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* Upcoming */}
-              {upcoming.length > 0 && (
-                <div className="card au2">
-                  <div className="card-title">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
-                      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-                      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
-                    Upcoming
-                    <span style={{marginLeft:'auto',background:' var(--g100)',color:'var(--g700)',fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:100}}>{upcoming.length}</span>
-                  </div>
-                  <div className="apt-list">
-                    {upcoming.map(apt => (
-                      <div key={apt.id} className="apt-card upcoming">
-                        <AptDate date={apt.date} />
-                        <div className="apt-body">
-                          <div className="apt-patient">{getPatientName(apt.patientId)}</div>
-                          <div className="apt-doctor">{apt.doctorName}</div>
-                          <div className="apt-facility">{apt.facility}</div>
-                          <div className="apt-meta">
-                            <span className="apt-tag">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                              {formatTime?.(apt.time) ?? apt.time}
-                            </span>
-                            <span className="apt-tag">· {apt.reason}</span>
-                            <span className="apt-badge scheduled">Scheduled</span>
-                          </div>
-                          {apt.notes && <div style={{fontSize:12,color:'var(--n500)',marginTop:6,fontWeight:300}}>{apt.notes}</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Past */}
-              {past.length > 0 && (
-                <div className="card au3">
-                  <div className="card-title">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--n400)" strokeWidth="2.5">
-                      <path d="M12 2a10 10 0 1 0 10 10"/><polyline points="12 6 12 12 16 14"/>
-                      <polyline points="22 2 22 8 16 8"/>
-                    </svg>
-                    <span style={{color:'var(--n500)'}}>Past Appointments</span>
-                    <span style={{marginLeft:'auto',background:'var(--n100)',color:'var(--n500)',fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:100}}>{past.length}</span>
-                  </div>
-                  <div className="apt-list">
-                    {past.map(apt => (
-                      <div key={apt.id} className="apt-card past">
-                        <AptDate date={apt.date} />
-                        <div className="apt-body">
-                          <div className="apt-patient">{getPatientName(apt.patientId)}</div>
-                          <div className="apt-doctor">{apt.doctorName}</div>
-                          <div className="apt-facility">{apt.facility}</div>
-                          <div className="apt-meta">
-                            <span className="apt-tag">{formatDate(apt.date)}</span>
-                            <span className="apt-badge past">Completed</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {appointments.length === 0 && !showForm && (
-                <div className="card au2">
-                  <div className="empty">
-                    <div className="empty-icon">📅</div>
-                    <div className="empty-title">No appointments yet</div>
-                    <div className="empty-sub">Book your first appointment using the button above.</div>
-                  </div>
-                </div>
-              )}
-
+              <FieldGroup label="Healthcare Facility" required error={errors.facility}>
+                <input className={`ds-input ${errors.facility ? 'err' : ''}`} placeholder="Lagos University Teaching Hospital" value={formData.facility} onChange={set('facility')} />
+              </FieldGroup>
             </div>
+
+            <div className="sec-div"><div className="sec-line" /><span className="sec-txt">Date & Time</span><div className="sec-line" /></div>
+
+            <div className="form-grid" style={{ marginBottom: 14 }}>
+              <FieldGroup label="Date" required error={errors.date}>
+                <input type="date" className={`ds-input ${errors.date ? 'err' : ''}`} value={formData.date} onChange={set('date')} />
+              </FieldGroup>
+
+              <FieldGroup label="Time" required error={errors.time}>
+                <input type="time" className={`ds-input ${errors.time ? 'err' : ''}`} value={formData.time} onChange={set('time')} />
+              </FieldGroup>
+            </div>
+
+            <div className="sec-div"><div className="sec-line" /><span className="sec-txt">Details</span><div className="sec-line" /></div>
+
+            <div className="form-grid" style={{ marginBottom: 20 }}>
+              <FieldGroup label="Reason" required error={errors.reason}>
+                <input className={`ds-input ${errors.reason ? 'err' : ''}`} placeholder="e.g. Routine check-up, Follow-up" value={formData.reason} onChange={set('reason')} />
+              </FieldGroup>
+
+              <div className="field">
+                <label className="field-label">Additional Notes</label>
+                <textarea className="ds-textarea" placeholder="Any additional information…" value={formData.notes} onChange={set('notes')} />
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary btn-full">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Confirm Appointment
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Upcoming */}
+      {upcoming.length > 0 && (
+        <div className="card au2">
+          <div className="card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Upcoming
+            <span style={{ marginLeft: 'auto', background: ' var(--g100)', color: 'var(--g700)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100 }}>{upcoming.length}</span>
+          </div>
+          <div className="apt-list">
+            {upcoming.map(apt => (
+              <div key={apt.id} className="apt-card upcoming">
+                <AptDate date={apt.date} />
+                <div className="apt-body">
+                  <div className="apt-patient">{getPatientName(apt.patientId)}</div>
+                  <div className="apt-doctor">{apt.doctorName}</div>
+                  <div className="apt-facility">{apt.facility}</div>
+                  <div className="apt-meta">
+                    <span className="apt-tag">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                      {formatTime?.(apt.time) ?? apt.time}
+                    </span>
+                    <span className="apt-tag">· {apt.reason}</span>
+                    <span className="apt-badge scheduled">Scheduled</span>
+                  </div>
+                  {apt.notes && <div style={{ fontSize: 12, color: 'var(--n500)', marginTop: 6, fontWeight: 300 }}>{apt.notes}</div>}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
-    </>
+      )}
+
+      {/* Past */}
+      {past.length > 0 && (
+        <div className="card au3">
+          <div className="card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--n400)" strokeWidth="2.5">
+              <path d="M12 2a10 10 0 1 0 10 10" /><polyline points="12 6 12 12 16 14" />
+              <polyline points="22 2 22 8 16 8" />
+            </svg>
+            <span style={{ color: 'var(--n500)' }}>Past Appointments</span>
+            <span style={{ marginLeft: 'auto', background: 'var(--n100)', color: 'var(--n500)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100 }}>{past.length}</span>
+          </div>
+          <div className="apt-list">
+            {past.map(apt => (
+              <div key={apt.id} className="apt-card past">
+                <AptDate date={apt.date} />
+                <div className="apt-body">
+                  <div className="apt-patient">{getPatientName(apt.patientId)}</div>
+                  <div className="apt-doctor">{apt.doctorName}</div>
+                  <div className="apt-facility">{apt.facility}</div>
+                  <div className="apt-meta">
+                    <span className="apt-tag">{formatDate(apt.date)}</span>
+                    <span className="apt-badge past">Completed</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {appointments.length === 0 && !showForm && (
+        <div className="card au2">
+          <div className="empty">
+            <div className="empty-icon">📅</div>
+            <div className="empty-title">No appointments yet</div>
+            <div className="empty-sub">Book your first appointment using the button above.</div>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }
