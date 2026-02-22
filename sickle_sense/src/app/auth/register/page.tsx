@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { isValidEmail, isValidPhone } from '@/lib/utils';
 
@@ -433,7 +433,7 @@ function TextInput({
   );
 }
 
-export default function RegisterPage() {
+function RegisterContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const role = searchParams.get('role') as 'patient' | 'caregiver' | null;
@@ -447,10 +447,6 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [patientCodeFromBackend, setPatientCodeFromBackend] = useState('');
-
-  useEffect(() => {
-    // No longer generate code on client
-  }, [role]);
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFormData(p => ({ ...p, [key]: e.target.value }));
@@ -498,7 +494,6 @@ export default function RegisterPage() {
       payload.relationship = formData.relationship;
     }
 
-    console.log("Payload:", payload);
     try {
       const response = await fetch('https://team-invictus-cavista-hackathon.onrender.com/signup', {
         method: 'POST',
@@ -507,259 +502,223 @@ export default function RegisterPage() {
       });
 
       const data = await response.json();
-      console.log("Response data:", data);
-      console.log("Response status:", response.ok);
-
       if (!response.ok) {
-        const errorMsg = data.detail?.[0]?.msg || data.message || 'Registration failed.';
-        setApiError(errorMsg);
+        setApiError(data.detail?.[0]?.msg || data.message || 'Registration failed.');
         setIsSubmitting(false);
         return;
       }
 
       const patientCode = data.patient_code || data.patientCode;
-
-      if (patientCode) {
-        setPatientCodeFromBackend(patientCode);
-      }
+      if (patientCode) setPatientCodeFromBackend(patientCode);
 
       setSuccess(true);
-      setIsSubmitting(false); // Make sure to stop loading state
-
-      // ✅ Automatically route to login after 3 seconds
-      setTimeout(() => {
-        router.push(`/auth/login?role=${role}`);
-      }, 3500);
+      setIsSubmitting(false);
+      setTimeout(() => router.push(`/auth/login?role=${role}`), 3500);
 
     } catch (error) {
-      // Check if it's a real network error or a code error
-      console.error("Registration Error:", error);
       setApiError('An unexpected error occurred. Please try again.');
       setIsSubmitting(false);
     }
   };
+
   if (!role) {
     return (
-      <>
-        <style>{STYLES}</style>
-        <div className="invalid-state">
-          <span style={{ fontSize: 32 }}>⚠️</span>
-          <p style={{ color: '#6b7280', fontSize: 15 }}>Invalid role. Please go back and select a role.</p>
-          <a href="/auth" style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>← Go back</a>
-        </div>
-      </>
+      <div className="invalid-state">
+        <span style={{ fontSize: 32 }}>⚠️</span>
+        <p style={{ color: '#6b7280', fontSize: 15 }}>Invalid role. Please go back and select a role.</p>
+        <a href="/auth" style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>← Go back</a>
+      </div>
     );
   }
 
   return (
-    <>
-      <style>{STYLES}</style>
-      <div className="page">
-        <div className="blob blob-tl" />
-        <div className="blob blob-br" />
-        <div className="grid-bg" />
+    <div className="page">
+      <div className="blob blob-tl" />
+      <div className="blob blob-br" />
+      <div className="grid-bg" />
 
-        <div className="page-header">
-          <a href="/auth" className="back-link">
-            <span className="back-arrow">
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            Back
-          </a>
+      <div className="page-header">
+        <a href="/auth" className="back-link">
+          <span className="back-arrow">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          Back
+        </a>
 
-          <div className="logo-row">
-            <div className="logo-icon"><span className="logo-letter">S</span></div>
-            <span className="logo-name">SickleSense</span>
-          </div>
-
-          <h1 className="page-title">
-            {role === 'patient' ? (
-              <><span className="title-accent">Patient</span> Registration</>
-            ) : (
-              <><span className="title-accent">Caregiver</span> Registration</>
-            )}
-          </h1>
-          <p className="page-sub">
-            {role === 'patient'
-              ? 'Create your account and receive a unique code to share with your caregivers.'
-              : 'Create your account and link to your patient using their unique code.'}
-          </p>
+        <div className="logo-row">
+          <div className="logo-icon"><span className="logo-letter">S</span></div>
+          <span className="logo-name">SickleSense</span>
         </div>
 
-        <div className="form-card">
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <span className="role-badge">
-              <span className="role-dot" />
-              {role === 'patient' ? '👤 Registering as Patient' : '🤝 Registering as Caregiver'}
-            </span>
+        <h1 className="page-title">
+          {role === 'patient' ? (
+            <><span className="title-accent">Patient</span> Registration</>
+          ) : (
+            <><span className="title-accent">Caregiver</span> Registration</>
+          )}
+        </h1>
+        <p className="page-sub">
+          {role === 'patient'
+            ? 'Create your account and receive a unique code to share with your caregivers.'
+            : 'Create your account and link to your patient using their unique code.'}
+        </p>
+      </div>
+
+      <div className="form-card">
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <span className="role-badge">
+            <span className="role-dot" />
+            {role === 'patient' ? '👤 Registering as Patient' : '🤝 Registering as Caregiver'}
+          </span>
+        </div>
+
+        {success && (
+          <div className="alert alert-success">
+            <span className="alert-icon">✓</span>
+            <div>
+              <div className="alert-title">Registration Successful!</div>
+              {patientCodeFromBackend && (
+                <div style={{ marginTop: 4 }}>
+                  Your patient code: <strong>{patientCodeFromBackend}</strong>
+                </div>
+              )}
+              Redirecting to login...
+            </div>
+          </div>
+        )}
+
+        {apiError && (
+          <div className="alert alert-error">
+            <span className="alert-icon">⚠️</span>
+            <div>{apiError}</div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="section-divider">
+            <div className="divider-line" />
+            <span className="divider-label">Personal Info</span>
+            <div className="divider-line" />
           </div>
 
-          {success && (
-            <div className="alert alert-success">
-              <span className="alert-icon">✓</span>
-              <div>
-                <div className="alert-title">Registration Successful!</div>
-                {patientCodeFromBackend && (
-                  <div style={{ marginTop: 4 }}>
-                    Your patient code: <strong>{patientCodeFromBackend}</strong>
-                  </div>
-                )}
-                Redirecting to your {role} dashboard...
+          <div className="fields-grid">
+            <div className="field-full">
+              <FieldGroup label="Full Name" required error={errors.name}>
+                <TextInput placeholder="e.g. Amina Okonkwo" value={formData.name} onChange={set('name')} error={errors.name} />
+              </FieldGroup>
+            </div>
+            <FieldGroup label="Email Address" required error={errors.email}>
+              <TextInput type="email" placeholder="you@example.com" value={formData.email} onChange={set('email')} error={errors.email} />
+            </FieldGroup>
+            <FieldGroup label="Phone Number" required error={errors.phone}>
+              <TextInput type="tel" placeholder="+234 801 234 5678" value={formData.phone} onChange={set('phone')} error={errors.phone} />
+            </FieldGroup>
+          </div>
+
+          {role === 'patient' && (
+            <>
+              <div className="section-divider">
+                <div className="divider-line" />
+                <span className="divider-label">Medical Details</span>
+                <div className="divider-line" />
               </div>
-            </div>
-          )}
-
-          {apiError && (
-            <div className="alert alert-error">
-              <span className="alert-icon">⚠️</span>
-              <div>{apiError}</div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="section-divider">
-              <div className="divider-line" />
-              <span className="divider-label">Personal Info</span>
-              <div className="divider-line" />
-            </div>
-
-            <div className="fields-grid">
-              <div className="field-full">
-                <FieldGroup label="Full Name" required error={errors.name}>
-                  <TextInput placeholder="e.g. Amina Okonkwo" value={formData.name} onChange={set('name')} error={errors.name} />
+              <div className="fields-grid">
+                <FieldGroup label="Date of Birth" required error={errors.dateOfBirth}>
+                  <input
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={set('dateOfBirth')}
+                    className={`field-input ${errors.dateOfBirth ? 'error' : ''}`}
+                  />
+                </FieldGroup>
+                <FieldGroup label="Genotype" required error={errors.genotype}>
+                  <div className="select-wrapper">
+                    <select value={formData.genotype} onChange={set('genotype')} className={`field-select ${errors.genotype ? 'error' : ''}`}>
+                      <option value="">Select genotype</option>
+                      <option value="SS">SS — Sickle Cell Disease</option>
+                      <option value="SC">SC — Hemoglobin C</option>
+                      <option value="SB">SB — Beta Thalassemia</option>
+                    </select>
+                    <span className="select-arrow">▼</span>
+                  </div>
                 </FieldGroup>
               </div>
+            </>
+          )}
 
-              <FieldGroup label="Email Address" required error={errors.email}>
-                <TextInput type="email" placeholder="you@example.com" value={formData.email} onChange={set('email')} error={errors.email} />
-              </FieldGroup>
+          {role === 'caregiver' && (
+            <>
+              <div className="section-divider">
+                <div className="divider-line" />
+                <span className="divider-label">Link to Patient</span>
+                <div className="divider-line" />
+              </div>
+              <div className="fields-grid">
+                <FieldGroup label="Patient Code" required error={errors.patientCode}>
+                  <TextInput placeholder="6-character code" value={formData.patientCode} onChange={set('patientCode')} error={errors.patientCode} />
+                </FieldGroup>
+                <FieldGroup label="Your Relationship" required error={errors.relationship}>
+                  <div className="select-wrapper">
+                    <select value={formData.relationship} onChange={set('relationship')} className={`field-select ${errors.relationship ? 'error' : ''}`}>
+                      <option value="">Select relationship</option>
+                      <option value="Parent">Parent</option>
+                      <option value="Sibling">Sibling</option>
+                      <option value="Spouse">Spouse</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <span className="select-arrow">▼</span>
+                  </div>
+                </FieldGroup>
+              </div>
+            </>
+          )}
 
-              <FieldGroup label="Phone Number" required error={errors.phone}>
-                <TextInput type="tel" placeholder="+234 801 234 5678" value={formData.phone} onChange={set('phone')} error={errors.phone} />
-              </FieldGroup>
-            </div>
+          <div className="section-divider">
+            <div className="divider-line" />
+            <span className="divider-label">Security</span>
+            <div className="divider-line" />
+          </div>
 
-            {role === 'patient' && (
-              <>
-                <div className="section-divider">
-                  <div className="divider-line" />
-                  <span className="divider-label">Medical Details</span>
-                  <div className="divider-line" />
-                </div>
-                <div className="fields-grid">
-                  <FieldGroup label="Date of Birth" required error={errors.dateOfBirth}>
-                    <input
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={set('dateOfBirth')}
-                      className={`field-input ${errors.dateOfBirth ? 'error' : ''}`}
-                    />
-                  </FieldGroup>
+          <div className="fields-grid">
+            <FieldGroup label="Password" required error={errors.password}>
+              <TextInput isPassword placeholder="Min. 6 characters" value={formData.password} onChange={set('password')} error={errors.password} />
+            </FieldGroup>
+            <FieldGroup label="Confirm Password" required error={errors.confirmPassword}>
+              <TextInput isPassword placeholder="Re-enter password" value={formData.confirmPassword} onChange={set('confirmPassword')} error={errors.confirmPassword} />
+            </FieldGroup>
+          </div>
 
-                  <FieldGroup label="Genotype" required error={errors.genotype}>
-                    <div className="select-wrapper">
-                      <select
-                        value={formData.genotype}
-                        onChange={set('genotype')}
-                        className={`field-select ${errors.genotype ? 'error' : ''}`}
-                      >
-                        <option value="">Select genotype</option>
-                        <option value="SS">SS — Sickle Cell Disease</option>
-                        <option value="SC">SC — Hemoglobin C</option>
-                        <option value="SB">SB — Beta Thalassemia</option>
-                      </select>
-                      <span className="select-arrow">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
-                    </div>
-                  </FieldGroup>
-                </div>
-              </>
-            )}
-
-            {role === 'caregiver' && (
-              <>
-                <div className="section-divider">
-                  <div className="divider-line" />
-                  <span className="divider-label">Link to Patient</span>
-                  <div className="divider-line" />
-                </div>
-
-                <div className="fields-grid">
-                  <FieldGroup label="Patient Code" required error={errors.patientCode}>
-                    <TextInput
-                      placeholder="6-character code"
-                      value={formData.patientCode}
-                      onChange={set('patientCode')}
-                      error={errors.patientCode}
-                    />
-                  </FieldGroup>
-
-                  <FieldGroup label="Your Relationship" required error={errors.relationship}>
-                    <div className="select-wrapper">
-                      <select
-                        value={formData.relationship}
-                        onChange={set('relationship')}
-                        className={`field-select ${errors.relationship ? 'error' : ''}`}
-                      >
-                        <option value="">Select relationship</option>
-                        <option value="Parent">Parent</option>
-                        <option value="Sibling">Sibling</option>
-                        <option value="Spouse">Spouse</option>
-                        <option value="Child">Child</option>
-                        <option value="Other">Other</option>
-                      </select>
-                      <span className="select-arrow">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
-                    </div>
-                  </FieldGroup>
-                </div>
-              </>
-            )}
-
-            <div className="section-divider">
-              <div className="divider-line" />
-              <span className="divider-label">Security</span>
-              <div className="divider-line" />
-            </div>
-
-            <div className="fields-grid">
-              <FieldGroup label="Password" required error={errors.password}>
-                <TextInput isPassword placeholder="Min. 6 characters" value={formData.password} onChange={set('password')} error={errors.password} />
-              </FieldGroup>
-
-              <FieldGroup label="Confirm Password" required error={errors.confirmPassword}>
-                <TextInput isPassword placeholder="Re-enter password" value={formData.confirmPassword} onChange={set('confirmPassword')} error={errors.confirmPassword} />
-              </FieldGroup>
-            </div>
-
-            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button type="submit" className="btn-submit" disabled={isSubmitting || success}>
-                {isSubmitting ? (
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                    Creating account...
-                  </span>
-                ) : success ? 'Redirecting...' : 'Create Account →'}
-              </button>
-
-              <p className="form-footer">
-                Already have an account?{' '}
-                <a href={`/auth/login?role=${role}`} className="form-link">Sign in here</a>
-              </p>
-            </div>
-          </form>
-        </div>
-
-        <div style={{ height: '32px' }} />
+          <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button type="submit" className="btn-submit" disabled={isSubmitting || success}>
+              {isSubmitting ? 'Creating account...' : success ? 'Redirecting...' : 'Create Account →'}
+            </button>
+            <p className="form-footer">
+              Already have an account?{' '}
+              <a href={`/auth/login?role=${role}`} className="form-link">Sign in here</a>
+            </p>
+          </div>
+        </form>
       </div>
+    </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <>
+      <style>{STYLES}</style>
+      <Suspense fallback={
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fefb', fontFamily: 'DM Sans, sans-serif' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ width: 32, height: 32, borderColor: '#dcfce7', borderTopColor: '#16a34a', margin: '0 auto 16px' }} />
+            <p style={{ color: '#6b7280', fontSize: 14 }}>Preparing registration...</p>
+          </div>
+        </div>
+      }>
+        <RegisterContent />
+      </Suspense>
     </>
   );
 }

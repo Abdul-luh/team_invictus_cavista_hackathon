@@ -390,7 +390,7 @@ export default function PatientDashboard() {
     </>
   );
 
-  //   if (!patient) return null;
+  if (!patient) return null;
 
   const rc = currentRisk?.riskLevel ?? 'low';
 

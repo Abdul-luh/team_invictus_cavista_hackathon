@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { mockPatients, mockCaregivers } from '@/lib/mockData';
 
@@ -378,7 +378,7 @@ function PasswordInput({
   );
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const role = searchParams.get('role') as 'patient' | 'caregiver' | null;
@@ -428,15 +428,16 @@ export default function LoginPage() {
       console.log(data);
 
       // Success – store token and user data
-      // Adapt if backend returns user directly or { token, user }
-      const token = data.token || localStorage.getItem('authToken') || 'demo-token';
+      const token = data.token || (typeof window !== 'undefined' ? localStorage.getItem('authToken') : null) || 'demo-token';
       const user = data.user || data;
 
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('userId', String(data.id)); // Ensure it's a string
-      localStorage.setItem('role', data.role);
-      localStorage.setItem('email', data.email);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('userId', String(data.id));
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('email', data.email);
+      }
 
       setIsLoading(false);
       router.push(user.role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
@@ -448,156 +449,168 @@ export default function LoginPage() {
 
   if (!role) {
     return (
-      <>
-        <style>{STYLES}</style>
-        <div className="invalid-state">
-          <span style={{ fontSize: 32 }}>⚠️</span>
-          <p style={{ color: '#6b7280', fontSize: 15 }}>Invalid role. Please go back and select a role.</p>
-          <a href="/auth" style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>← Go back</a>
-        </div>
-      </>
+      <div className="invalid-state">
+        <span style={{ fontSize: 32 }}>⚠️</span>
+        <p style={{ color: '#6b7280', fontSize: 15 }}>Invalid role. Please go back and select a role.</p>
+        <a href="/auth" style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>← Go back</a>
+      </div>
     );
   }
 
   return (
-    <>
-      <style>{STYLES}</style>
-      <div className="page">
-        <div className="blob blob-tl" />
-        <div className="blob blob-br" />
-        <div className="grid-bg" />
+    <div className="page">
+      <div className="blob blob-tl" />
+      <div className="blob blob-br" />
+      <div className="grid-bg" />
 
-        <div className="content">
-          {/* Header */}
-          <div className="page-header">
-            <a href="/auth" className="back-link">
-              <span className="back-arrow">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-              Back
-            </a>
+      <div className="content">
+        {/* Header */}
+        <div className="page-header">
+          <a href="/auth" className="back-link">
+            <span className="back-arrow">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            Back
+          </a>
 
-            <div className="logo-row">
-              <div className="logo-icon"><span className="logo-letter">S</span></div>
-              <span className="logo-name">SickleSense</span>
-            </div>
-
-            <div className="welcome-text">
-              <h1 className="page-title">
-                Welcome <span className="title-accent">back</span>
-              </h1>
-              <p className="page-sub">
-                Sign in to your {role === 'patient' ? 'patient' : 'caregiver'} account
-              </p>
-            </div>
+          <div className="logo-row">
+            <div className="logo-icon"><span className="logo-letter">S</span></div>
+            <span className="logo-name">SickleSense</span>
           </div>
 
-          {/* Form card */}
-          <div className="form-card">
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <span className="role-badge">
-                <span className="role-dot" />
-                {role === 'patient' ? '👤 Signing in as Patient' : '🤝 Signing in as Caregiver'}
-              </span>
+          <div className="welcome-text">
+            <h1 className="page-title">
+              Welcome <span className="title-accent">back</span>
+            </h1>
+            <p className="page-sub">
+              Sign in to your {role === 'patient' ? 'patient' : 'caregiver'} account
+            </p>
+          </div>
+        </div>
+
+        {/* Form card */}
+        <div className="form-card">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <span className="role-badge">
+              <span className="role-dot" />
+              {role === 'patient' ? '👤 Signing in as Patient' : '🤝 Signing in as Caregiver'}
+            </span>
+          </div>
+
+          {errors.general && (
+            <div className="alert alert-error">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {errors.general}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Email */}
+            <div className="field-group">
+              <label className="field-label">Email Address</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
+                className={`field-input ${errors.email ? 'error' : ''}`}
+              />
+              {errors.email && (
+                <span className="field-error">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
+                    <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  {errors.email}
+                </span>
+              )}
             </div>
 
-            {errors.general && (
-              <div className="alert alert-error">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {errors.general}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} noValidate>
-              {/* Email */}
-              <div className="field-group">
-                <label className="field-label">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
-                  className={`field-input ${errors.email ? 'error' : ''}`}
-                />
-                {errors.email && (
-                  <span className="field-error">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
-                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                    {errors.email}
-                  </span>
-                )}
-              </div>
-
-              {/* Password */}
-              <div className="field-group">
-                <label className="field-label">Password</label>
-                <PasswordInput
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
-                  error={errors.password}
-                />
-                {errors.password && (
-                  <span className="field-error">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
-                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                    {errors.password}
-                  </span>
-                )}
-              </div>
-
-              <div className="forgot-row">
-                <a href="#" className="forgot-link">Forgot password?</a>
-              </div>
-
-              <button type="submit" className="btn-submit" disabled={isLoading}>
-                {isLoading && <span className="spinner" />}
-                {isLoading ? 'Signing in…' : 'Sign In →'}
-              </button>
-
-              <p className="form-footer">
-                Don't have an account?{' '}
-                <a href={`/auth/register?role=${role}`} className="form-link">Create one here</a>
-              </p>
-            </form>
-
-            {/* Demo credentials */}
-            <div className="demo-card">
-              <div className="demo-title">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                Demo accounts
-              </div>
-              {(['patient', 'caregiver'] as const).map(r => (
-                <div className="demo-row" key={r}>
-                  <span className="demo-chip">{r === 'patient' ? '👤 Patient' : '🤝 Caregiver'}</span>
-                  <span className="demo-email">{DEMO[r]}</span>
-                  <button
-                    type="button"
-                    className="demo-use-btn"
-                    onClick={() => useDemoCredentials(r)}
-                  >
-                    Use
-                  </button>
-                </div>
-              ))}
+            {/* Password */}
+            <div className="field-group">
+              <label className="field-label">Password</label>
+              <PasswordInput
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
+                error={errors.password}
+              />
+              {errors.password && (
+                <span className="field-error">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
+                    <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  {errors.password}
+                </span>
+              )}
             </div>
+
+            <div className="forgot-row">
+              <a href="#" className="forgot-link">Forgot password?</a>
+            </div>
+
+            <button type="submit" className="btn-submit" disabled={isLoading}>
+              {isLoading && <span className="spinner" />}
+              {isLoading ? 'Signing in…' : 'Sign In →'}
+            </button>
+
+            <p className="form-footer">
+              Don't have an account?{' '}
+              <a href={`/auth/register?role=${role}`} className="form-link">Create one here</a>
+            </p>
+          </form>
+
+          {/* Demo credentials */}
+          <div className="demo-card">
+            <div className="demo-title">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              Demo accounts
+            </div>
+            {(['patient', 'caregiver'] as const).map(r => (
+              <div className="demo-row" key={r}>
+                <span className="demo-chip">{r === 'patient' ? '👤 Patient' : '🤝 Caregiver'}</span>
+                <span className="demo-email">{DEMO[r]}</span>
+                <button
+                  type="button"
+                  className="demo-use-btn"
+                  onClick={() => useDemoCredentials(r)}
+                >
+                  Use
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <>
+      <style>{STYLES}</style>
+      <Suspense fallback={
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fefb', fontFamily: 'DM Sans, sans-serif' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ width: 32, height: 32, borderColor: '#dcfce7', borderTopColor: '#16a34a', margin: '0 auto 16px' }} />
+            <p style={{ color: '#6b7280', fontSize: 14 }}>Preparing login...</p>
+          </div>
+        </div>
+      }>
+        <LoginContent />
+      </Suspense>
     </>
   );
 }
