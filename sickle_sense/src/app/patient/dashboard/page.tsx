@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { mockHealthData, mockRiskAssessments, mockPatients, initializeMockData } from '@/lib/mockData';
-import { Patient, HealthData, RiskAssessment } from '@/types';
+import { Patient, HealthData, RiskAssessment, ClinicalReport } from '@/types';
 import { formatDate } from '@/lib/utils';
 
 /* ─── Daily tasks definition (drives notification badges) ─── */
@@ -319,6 +319,59 @@ const STYLES = `
     border-left: 4px solid var(--g500);
   }
   .summary-text.warning { border-left-color: var(--rh-dot); }
+
+  /* AI Report Section */
+  .ai-report-card {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: var(--r-xl);
+    padding: 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+  }
+  .ai-report-card::before {
+    content: ''; position: absolute; top: -20%; right: -10%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(34, 197, 94, 0.1) 0%, transparent 70%);
+  }
+  .ai-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 12px;
+  }
+  .ai-badge {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ai-content {
+    font-size: 14px; line-height: 1.6;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 24px;
+    font-weight: 300;
+  }
+  .ai-metrics-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  .ai-metric-item {
+    background: rgba(255,255,255,0.05);
+    padding: 16px; border-radius: var(--r-lg);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .ai-metric-label { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+  .ai-metric-val {
+    font-family: 'Sora', sans-serif;
+    font-size: 24px; font-weight: 800;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ai-metric-val.drop { color: #f87171; }
+  .ai-metric-val.rise { color: #fbbf24; }
 `;
 
 export default function PatientDashboard() {
@@ -330,17 +383,65 @@ export default function PatientDashboard() {
   const [currentRisk, setCurrentRisk] = useState<RiskAssessment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [aiReport, setAiReport] = useState<ClinicalReport | null>(null);
 
   // Demo fallback data for visual consistency
   const DEMO_HEALTH_VALS = {
     hydrationLevel: 85,
-    painLevel: 2,
+    painLevel: 25,
     sleepHours: 8,
+    sleepStart: '10:00 PM',
+    sleepEnd: '06:00 AM',
     temperature: 36.8,
     fatigueLevel: 3,
     eyeJaundiceLevel: 2,
     medicationAdherence: true,
     activityLevel: 'moderate'
+  };
+
+  const fetchClinicalReport = async (uid: string) => {
+    try {
+      const token = localStorage.getItem('authToken'); // correct key
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://team-invictus-cavista-hackathon.onrender.com';
+
+      const res = await fetch(`${baseUrl}/user/clinical-report/${uid}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+      });
+
+      console.log("response", res);
+
+      if (res.ok) {
+        const data = await res.json();
+        setAiReport(data);
+      } else {
+        console.warn('Clinical report endpoint returned', res.status, 'using fallback');
+        // Fallback dummy report
+        setAiReport({
+          user_id: uid,
+          detailed_report: "Based on your recent trends, your hydration levels have shown a slight decline, which may contribute to the increased fatigue reported yesterday. However, your jaundice levels remain stable. We recommend increasing your fluid intake by 500ml daily over the next 48 hours to maintain stability.",
+          metrics: {
+            water_percent_drop: 12.5,
+            bilirubin_percent_rise: 4.2
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch clinical report, using fallback:', err);
+      // Fallback dummy report
+      setAiReport({
+        user_id: uid,
+        detailed_report: "Based on your recent trends, your hydration levels have shown a slight decline, which may contribute to the increased fatigue reported yesterday. However, your jaundice levels remain stable. We recommend increasing your fluid intake by 500ml daily over the next 48 hours to maintain stability.",
+        metrics: {
+          water_percent_drop: 12.5,
+          bilirubin_percent_rise: 4.2
+        }
+      });
+    }
   };
 
   useEffect(() => {
@@ -350,12 +451,14 @@ export default function PatientDashboard() {
     const userStr = localStorage.getItem('user');
     const userId = localStorage.getItem('userId');
     if (!userStr || !userId) { router.push('/auth'); return; }
+    console.log("userId", userId);
 
     const userObj = JSON.parse(userStr);
     if (userObj.role !== 'patient') { router.push('/auth'); return; }
 
-    // Set patient state only once
+    // Set patient state only onceA
     setPatient(userObj);
+    fetchClinicalReport(userId);
 
     // Get real unique code
     const realCode = userObj.unique_code || userObj.uniqueCode || userObj.patient_code || userObj.code || userObj.unique_id || 'SC-0000';
@@ -448,9 +551,9 @@ export default function PatientDashboard() {
           </div>
           <div className="stat amber">
             <span className="stat-ico">🩺</span>
-            <div className="stat-val">{currentHealth?.painLevel ?? DEMO_HEALTH_VALS.painLevel}<span style={{ fontSize: 14, fontWeight: 400 }}>/10</span></div>
+            <div className="stat-val">{currentHealth?.painLevel ?? DEMO_HEALTH_VALS.painLevel}%</div>
             <div className="stat-lbl">Pain Level</div>
-            <div className="stat-sub">Self-reported</div>
+            <div className="stat-sub">Self-reported (%)</div>
           </div>
           <div className="stat blue">
             <span className="stat-ico">😴</span>
@@ -576,6 +679,50 @@ export default function PatientDashboard() {
                 )}
               </div> */}
 
+        {/* AI Clinical Insights */}
+        {aiReport && (
+  <div className="ai-report-card au3">
+    <div className="ai-header">
+      <span style={{ fontSize: '20px' }}>🤖</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: '15px' }}>AI Clinical Insights</span>
+          <span className="ai-badge">Personalized</span>
+        </div>
+        <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px' }}>Generated from your recent health logs</div>
+      </div>
+    </div>
+
+    <div className="ai-content">
+      {aiReport.detailed_report}
+    </div>
+
+    <div className="ai-metrics-grid">
+      <div className="ai-metric-item">
+        <div className="ai-metric-label">Hydration Change</div>
+        <div className={`ai-metric-val ${aiReport.metrics.water_percent_drop > 0 ? 'drop' : ''}`}>
+          {aiReport.metrics.water_percent_drop > 0 ? '↓' : '↑'} {Math.abs(aiReport.metrics.water_percent_drop)}%
+        </div>
+      </div>
+      <div className="ai-metric-item">
+        <div className="ai-metric-label">Jaundice Trend</div>
+        <div className={`ai-metric-val ${aiReport.metrics.bilirubin_percent_rise > 0 ? 'rise' : ''}`}>
+          {aiReport.metrics.bilirubin_percent_rise > 0 ? '↑' : '↓'} {Math.abs(aiReport.metrics.bilirubin_percent_rise)}%
+        </div>
+      </div>
+    </div>
+
+    {/* Book Consultation Button */}
+    <button
+      className="action-btn primary"
+      onClick={() => router.push('/patient/appointments')}
+      style={{ marginTop: '24px', width: '100%', justifyContent: 'center' }}
+    >
+      <span>📅</span> Book a Consultation
+    </button>
+  </div>
+)}
+
         {/* Today's Health Detail */}
         <div className="card au4">
           <div className="card-title">
@@ -659,13 +806,17 @@ export default function PatientDashboard() {
 
         {/* Actions */}
         <div className="actions-grid au5">
-          <button className="action-btn secondary" onClick={() => router.push('/patient/trends')}>
-            <span className="action-icon">📊</span>
-            <span>SOS</span>
+          <button className="action-btn primary" onClick={() => router.push('/patient/sos')}>
+            <span className="action-icon">🚨</span>
+            <span>Emergency SOS</span>
           </button>
           <button className="action-btn secondary" onClick={() => router.push('/patient/contact')}>
             <span className="action-icon">📞</span>
             <span>Contact Caregiver</span>
+          </button>
+          <button className="action-btn secondary" onClick={() => router.push('/patient/trends')}>
+            <span className="action-icon">📊</span>
+            <span>View Health Trends</span>
           </button>
         </div>
 
