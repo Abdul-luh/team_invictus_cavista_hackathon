@@ -20,33 +20,33 @@ interface JaundiceStats {
 const Icons = {
   Pill: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.5 20.5 20.5 10.5c1.6-1.6 1.6-4.1 0-5.7l-4.3-4.3c-1.6-1.6-4.1-1.6-5.7 0L.5 10.5c-1.6 1.6-1.6 4.1 0 5.7l4.3 4.3c1.6 1.6 4.1 1.6 5.7 0Z"/>
-      <path d="m5.5 10.5 10-10"/>
+      <path d="M10.5 20.5 20.5 10.5c1.6-1.6 1.6-4.1 0-5.7l-4.3-4.3c-1.6-1.6-4.1-1.6-5.7 0L.5 10.5c-1.6 1.6-1.6 4.1 0 5.7l4.3 4.3c1.6 1.6 4.1 1.6 5.7 0Z" />
+      <path d="m5.5 10.5 10-10" />
     </svg>
   ),
   Eye: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-      <circle cx="12" cy="12" r="3"/>
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   ),
   Moon: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
     </svg>
   ),
   Activity: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
     </svg>
   ),
   Notes: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" x2="8" y1="13" y2="13"/>
-      <line x1="16" x2="8" y1="17" y2="17"/>
-      <line x1="10" x2="8" y1="9" y2="9"/>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" x2="8" y1="13" y2="13" />
+      <line x1="16" x2="8" y1="17" y2="17" />
+      <line x1="10" x2="8" y1="9" y2="9" />
     </svg>
   ),
 };
@@ -211,6 +211,26 @@ const STYLES = `
   .spinner { display: inline-block; width: 1.25rem; height: 1.25rem; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 0.5rem; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Medication List Styles */
+  .med-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .med-item {
+    display: flex; align-items: center; gap: 1rem; padding: 1rem;
+    border: 1px solid var(--gray-200); border-radius: var(--radius-xl);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .med-item:hover { background: var(--gray-50); border-color: var(--gray-300); }
+  .med-item.completed { background: var(--success-50); border-color: var(--success-500); }
+  .med-checkbox {
+    width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--gray-300);
+    display: flex; justify-content: center; align-items: center; transition: all 0.2s;
+    background: var(--white); flex-shrink: 0;
+  }
+  .med-item.completed .med-checkbox { background: var(--success-500); border-color: var(--success-500); color: white; }
+  .med-info { flex: 1; }
+  .med-name { font-weight: 600; font-size: 0.9375rem; color: var(--gray-800); }
+  .med-time { font-size: 0.75rem; color: var(--gray-500); }
+  .med-status { font-size: 0.75rem; font-weight: 500; margin-top: 0.25rem; font-style: italic; }
+  
   @media (max-width: 640px) {
     .button-group { flex-direction: column; }
     .page-header { flex-direction: column; align-items: flex-start; }
@@ -231,7 +251,7 @@ interface SliderFieldProps {
 
 function SliderField({ label, value, min, max, step = 1, unit = '', colorClass, onChange }: SliderFieldProps) {
   const progress = ((value - min) / (max - min)) * 100;
-  
+
   const getStatusHint = () => {
     if (colorClass === 'pain') {
       if (value > 7) return { type: 'danger', text: 'Severe' };
@@ -303,6 +323,23 @@ export default function DailyCheckin() {
   const [success, setSuccess] = useState(false);
   const [hydrationStats, setHydrationStats] = useState<HydrationStats | null>(null);
 
+  const [medications, setMedications] = useState([
+    { id: '1', name: 'Hydroxyurea', taken: false, time: '08:00 AM', status: '' },
+    { id: '2', name: 'Folic Acid', taken: false, time: '08:30 AM', status: '' },
+    { id: '3', name: 'Penicillin', taken: false, time: '09:00 AM', status: '' },
+    { id: '4', name: 'Pain Medication (as needed)', taken: false, time: 'Flexible', status: '' },
+  ]);
+
+  const toggleMedication = (id: string) => {
+    setMedications(meds => meds.map(m =>
+      m.id === id ? {
+        ...m,
+        taken: !m.taken,
+        status: !m.taken ? 'Waiting for caregiver/family to confirm' : ''
+      } : m
+    ));
+  };
+
   const [formData, setFormData] = useState({
     hydrationLevel: 50,
     painLevel: 0,
@@ -326,7 +363,7 @@ export default function DailyCheckin() {
     } catch (error) { router.push('/auth'); }
   }, [router]);
 
-    const handleJaundiceUpdate = (stats: JaundiceStats) => {
+  const handleJaundiceUpdate = (stats: JaundiceStats) => {
     // Update the jaundice level in the main form state
     // This connects the AI analysis result to the data sent to the backend/mock
     setFormData(prev => ({ ...prev, eyeJaundiceLevel: stats.current_level }));
@@ -336,8 +373,17 @@ export default function DailyCheckin() {
 
   const handleHydrationUpdate = (stats: HydrationStats) => {
     setHydrationStats(stats);
-    const newHydrationLevel = Math.min(100, Math.round((stats.drinks_today * 250 / 2000) * 100));
+    const newHydrationLevel = stats.progress_percentage || Math.min(100, Math.round((stats.drinks_today * 250 / 2000) * 100));
     setFormData(prev => ({ ...prev, hydrationLevel: newHydrationLevel }));
+
+    // Proactively update latestHealth in localStorage so dashboard updates immediately
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      const storedLatest = localStorage.getItem('latestHealth');
+      let currentLatest = storedLatest ? JSON.parse(storedLatest) : { patientId: userId, date: new Date() };
+      const updatedLatest = { ...currentLatest, hydrationLevel: newHydrationLevel };
+      localStorage.setItem('latestHealth', JSON.stringify(updatedLatest));
+    }
   };
 
   const getRecommendations = (level: string, triggers: string[]): string[] => {
@@ -409,6 +455,8 @@ export default function DailyCheckin() {
       });
     }
 
+    localStorage.setItem('latestHealth', JSON.stringify(newHealth));
+
     setTimeout(() => {
       setIsSubmitting(false);
       setSuccess(true);
@@ -430,7 +478,7 @@ export default function DailyCheckin() {
     <>
       <style>{STYLES}</style>
       <div className="inner">
-        
+
         {/* Header */}
         <div className="page-header fade-in">
           <div className="header-left">
@@ -462,32 +510,35 @@ export default function DailyCheckin() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="checkin-form">
-            
+
             {/* Hydration Card */}
             <HydrationCard hydrationLevel={formData.hydrationLevel} onHydrationUpdate={handleHydrationUpdate} />
 
-            <EyeJaundiceCard 
-              onJaundiceUpdate={handleJaundiceUpdate} 
-            /> 
+            <EyeJaundiceCard
+              onJaundiceUpdate={handleJaundiceUpdate}
+            />
 
 
 
             {/* Medication */}
-            <SectionCard icon={<Icons.Pill />} iconClass="green" title="Medication Adherence" sub="Did you take your prescribed medications today?" animClass="fade-in-1">
-              <label className={`checkbox-toggle ${formData.medicationAdherence ? 'checked' : ''}`}>
-                <input type="checkbox" checked={formData.medicationAdherence} onChange={(e) => updateField('medicationAdherence')(e.target.checked)} style={{ display: 'none' }} />
-                <div className="checkbox-box">
-                  {formData.medicationAdherence && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  )}
-                </div>
-                <span className="checkbox-label">
-                  {formData.medicationAdherence ? 'Yes, I took all medications' : 'No, I missed my medications'}
-                </span>
-              </label>
+            <SectionCard icon={<Icons.Pill />} iconClass="green" title="Medication Adherence" sub="Track your sickle cell medications today" animClass="fade-in-1">
+              <div className="med-list">
+                {medications.map(m => (
+                  <div key={m.id} className={`med-item ${m.taken ? 'completed' : ''}`} onClick={() => toggleMedication(m.id)}>
+                    <div className="med-checkbox">
+                      {m.taken && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                    </div>
+                    <div className="med-info">
+                      <div className="med-name">{m.name}</div>
+                      <div className="med-time">{m.time}</div>
+                      {m.status && <div className="med-status" style={{ color: '#16a34a' }}>{m.status}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </SectionCard>
 
-        
+
 
             {/* Sleep */}
             <SectionCard icon={<Icons.Moon />} iconClass="purple" title="Sleep Duration" sub="Hours of sleep received last night" animClass="fade-in-3">

@@ -373,6 +373,66 @@ const STYLES = `
     font-family:'DM Sans',sans-serif;
   }
 `;
+
+function FieldGroup({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return (
+    <div className="field-group">
+      <label className="field-label">
+        {label}
+        {required && <span className="required-mark">*</span>}
+      </label>
+      {children}
+      {error && (
+        <span className="field-error">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
+            <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function TextInput({
+  placeholder, value, onChange, error, type = 'text', isPassword = false
+}: {
+  placeholder?: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string; type?: string; isPassword?: boolean
+}) {
+  const [show, setShow] = useState(false);
+  const inputType = isPassword ? (show ? 'text' : 'password') : type;
+
+  return (
+    <div className="input-wrapper">
+      <input
+        type={inputType}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className={`field-input ${error ? 'error' : ''}`}
+        style={isPassword ? { paddingRight: '40px' } : {}}
+      />
+      {isPassword && (
+        <button type="button" className="eye-btn" onClick={() => setShow(!show)}>
+          {show ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function RegisterPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -422,12 +482,11 @@ export default function RegisterPage() {
     setApiError(null);
     setSuccess(false);
 
-    // Construct payload according to backend expectations
     const payload: any = {
       email: formData.email,
       password: formData.password,
+      full_name: formData.name,
       role: role,
-      name: formData.name,
       phone: formData.phone,
     };
 
@@ -435,10 +494,11 @@ export default function RegisterPage() {
       payload.dateOfBirth = formData.dateOfBirth;
       payload.genotype = formData.genotype;
     } else if (role === 'caregiver') {
-      payload.patientCode = formData.patientCode.toUpperCase(); // ensure uppercase
+      payload.linked_patient_code = formData.patientCode.toUpperCase();
       payload.relationship = formData.relationship;
     }
 
+    console.log("Payload:", payload);
     try {
       const response = await fetch('https://team-invictus-cavista-hackathon.onrender.com/signup', {
         method: 'POST',
@@ -447,38 +507,37 @@ export default function RegisterPage() {
       });
 
       const data = await response.json();
+      console.log("Response data:", data);
+      console.log("Response status:", response.ok);
 
       if (!response.ok) {
-        // Handle validation or server errors
-        const errorMsg = data.message || data.error || 'Registration failed. Please try again.';
+        const errorMsg = data.detail?.[0]?.msg || data.message || 'Registration failed.';
         setApiError(errorMsg);
         setIsSubmitting(false);
         return;
       }
 
-      // Success – store token and user data
-      const { token, user } = data;
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('userId', user.id);
-      localStorage.setItem('role', user.role);
-      localStorage.setItem('email', user.email);
+      const patientCode = data.patient_code || data.patientCode;
 
-      // If patient, store patient code (optional)
-      if (user.role === 'patient' && user.patientCode) {
-        setPatientCodeFromBackend(user.patientCode);
+      if (patientCode) {
+        setPatientCodeFromBackend(patientCode);
       }
 
       setSuccess(true);
+      setIsSubmitting(false); // Make sure to stop loading state
+
+      // ✅ Automatically route to login after 3 seconds
       setTimeout(() => {
-        router.push(user.role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
-      }, 1500);
+        router.push(`/auth/login?role=${role}`);
+      }, 3500);
+
     } catch (error) {
-      setApiError('Network error. Please check your connection.');
+      // Check if it's a real network error or a code error
+      console.error("Registration Error:", error);
+      setApiError('An unexpected error occurred. Please try again.');
       setIsSubmitting(false);
     }
   };
-
   if (!role) {
     return (
       <>
@@ -504,7 +563,7 @@ export default function RegisterPage() {
           <a href="/auth" className="back-link">
             <span className="back-arrow">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             Back
@@ -589,7 +648,6 @@ export default function RegisterPage() {
                   <span className="divider-label">Medical Details</span>
                   <div className="divider-line" />
                 </div>
-
                 <div className="fields-grid">
                   <FieldGroup label="Date of Birth" required error={errors.dateOfBirth}>
                     <input
@@ -614,7 +672,7 @@ export default function RegisterPage() {
                       </select>
                       <span className="select-arrow">
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
                     </div>
@@ -657,7 +715,7 @@ export default function RegisterPage() {
                       </select>
                       <span className="select-arrow">
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
                     </div>

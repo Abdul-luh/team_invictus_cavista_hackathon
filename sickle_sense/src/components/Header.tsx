@@ -3,43 +3,50 @@
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { NotificationBell } from './NotificationBell';
+import { User, Settings, LogOut, Menu } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
   userRole: 'patient' | 'caregiver';
+  onMenuClick?: () => void;
 }
 
-export const Header = ({ title, userRole }: HeaderProps) => {
+export const Header = ({ title, userRole, onMenuClick }: HeaderProps) => {
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
     const user = localStorage.getItem('user');
     if (user) {
-      const userData = JSON.parse(user);
-      setUserName(userData.name || (userRole === 'patient' ? 'John Doe' : 'Dr. Smith'));
+      try {
+        const userData = JSON.parse(user);
+        setUserName(userData.name || userData.full_name || (userRole === 'patient' ? 'Amina Okonkwo' : 'Dr. Smith'));
+        setUserEmail(userData.email || (userData.name ? `${userData.name.toLowerCase().replace(' ', '.')}@sicklesense.com` : 'user@sicklesense.com'));
+      } catch (e) {
+        console.error("Failed to parse user data", e);
+      }
     }
 
     // Update time every minute
     const updateTime = () => {
       const now = new Date();
-      setCurrentTime(now.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      setCurrentTime(now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       }));
     };
-    
+
     updateTime();
     const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
   }, [userRole]);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('userId');
+    localStorage.clear();
     router.push('/auth');
   };
 
@@ -47,19 +54,22 @@ export const Header = ({ title, userRole }: HeaderProps) => {
     <>
       <style>{`
         .header {
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+          background: rgba(255, 255, 255, 0.98);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(22, 163, 74, 0.1);
           position: sticky;
           top: 0;
-          z-index: 40;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+          z-index: 100;
+          height: 72px;
+          display: flex;
+          align-items: center;
         }
 
         .header-container {
-          max-width: 1600px;
+          width: 100%;
+          max-width: 1400px;
           margin: 0 auto;
-          padding: 0.75rem 2rem;
+          padding: 0 2rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -68,26 +78,22 @@ export const Header = ({ title, userRole }: HeaderProps) => {
         .header-left {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 1.25rem;
         }
 
         .brand-logo {
-          width: 44px;
-          height: 44px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 12px;
+          width: 40px;
+          height: 40px;
+          background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          font-weight: 700;
-          font-size: 1.25rem;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-          transition: transform 0.2s ease;
-        }
-
-        .brand-logo:hover {
-          transform: scale(1.05);
+          font-weight: 800;
+          font-size: 1.4rem;
+          box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+          font-family: 'Sora', sans-serif;
         }
 
         .title-section {
@@ -96,55 +102,44 @@ export const Header = ({ title, userRole }: HeaderProps) => {
         }
 
         .title {
-          font-size: 1.5rem;
+          font-family: 'Sora', sans-serif;
+          font-size: 1.15rem;
           font-weight: 700;
-          color: #1a202c;
-          line-height: 1.2;
-          margin: 0;
+          color: #111827;
+          letter-spacing: -0.02em;
         }
 
         .subtitle {
           font-size: 0.75rem;
-          color: #718096;
+          color: #6b7280;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.4rem;
+          font-weight: 400;
         }
 
         .time-badge {
-          background: #f7fafc;
-          padding: 0.125rem 0.5rem;
-          border-radius: 1rem;
-          font-size: 0.7rem;
-          color: #4a5568;
-          font-weight: 500;
+          font-weight: 600;
+          color: #16a34a;
         }
 
         .header-right {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
+          gap: 1.25rem;
         }
 
         .date-display {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: #f7fafc;
-          border-radius: 2rem;
-          border: 1px solid #e2e8f0;
-        }
-
-        .date-icon {
-          color: #667eea;
-          font-size: 1rem;
-        }
-
-        .date-text {
+          padding: 0.5rem 0.875rem;
+          background: #f0fdf4;
+          border-radius: 10px;
+          border: 1px solid rgba(22, 163, 74, 0.1);
+          color: #15803d;
           font-size: 0.875rem;
-          font-weight: 500;
-          color: #4a5568;
+          font-weight: 600;
         }
 
         .user-menu {
@@ -155,95 +150,82 @@ export const Header = ({ title, userRole }: HeaderProps) => {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          padding: 0.5rem 0.5rem 0.5rem 1rem;
-          background: linear-gradient(135deg, #f7fafc 0%, #ffffff 100%);
-          border: 1px solid #e2e8f0;
-          border-radius: 2rem;
+          padding: 0.375rem 0.375rem 0.375rem 0.875rem;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 50px;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .user-button:hover {
-          border-color: #667eea;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-          transform: translateY(-1px);
+          border-color: #16a34a;
+          background: white;
+          box-shadow: 0 4px 12px rgba(22, 163, 74, 0.08);
         }
 
         .user-avatar {
-          width: 36px;
-          height: 36px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          width: 32px;
+          height: 32px;
+          background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          font-weight: 600;
+          font-weight: 700;
           font-size: 0.875rem;
-          text-transform: uppercase;
         }
 
         .user-info {
           display: flex;
           flex-direction: column;
           align-items: flex-start;
+          line-height: 1.2;
         }
 
         .user-name {
           font-size: 0.875rem;
           font-weight: 600;
-          color: #1a202c;
+          color: #111827;
         }
 
         .user-role-badge {
           font-size: 0.7rem;
-          color: #667eea;
-          background: rgba(102, 126, 234, 0.1);
-          padding: 0.125rem 0.5rem;
-          border-radius: 1rem;
+          color: #16a34a;
           font-weight: 500;
           text-transform: capitalize;
         }
 
-        .dropdown-arrow {
-          color: #a0aec0;
-          transition: transform 0.2s ease;
-        }
-
-        .user-button:hover .dropdown-arrow {
-          transform: translateY(2px);
-          color: #667eea;
-        }
-
         .dropdown-menu {
           position: absolute;
-          top: calc(100% + 0.5rem);
+          top: calc(100% + 0.75rem);
           right: 0;
-          width: 240px;
+          width: 260px;
           background: white;
-          border-radius: 1rem;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+          border: 1px solid rgba(0, 0, 0, 0.05);
           overflow: hidden;
-          animation: slideDown 0.2s ease;
-          z-index: 50;
+          animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          z-index: 1000;
         }
 
         .dropdown-header {
-          padding: 1rem;
-          background: linear-gradient(135deg, #f7fafc 0%, #ffffff 100%);
-          border-bottom: 1px solid #e2e8f0;
+          padding: 1.25rem;
+          background: #f9fafb;
+          border-bottom: 1px solid #f3f4f6;
         }
 
         .dropdown-user-name {
-          font-weight: 600;
-          color: #1a202c;
-          font-size: 0.9375rem;
+          font-weight: 700;
+          color: #111827;
+          font-size: 1rem;
         }
 
         .dropdown-user-email {
           font-size: 0.75rem;
-          color: #718096;
+          color: #6b7280;
           margin-top: 0.25rem;
         }
 
@@ -251,10 +233,11 @@ export const Header = ({ title, userRole }: HeaderProps) => {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          padding: 0.75rem 1rem;
-          color: #4a5568;
-          font-size: 0.875rem;
-          transition: all 0.2s ease;
+          padding: 0.875rem 1.25rem;
+          color: #374151;
+          font-size: 0.9375rem;
+          font-weight: 500;
+          transition: all 0.2s;
           cursor: pointer;
           width: 100%;
           border: none;
@@ -263,99 +246,68 @@ export const Header = ({ title, userRole }: HeaderProps) => {
         }
 
         .dropdown-item:hover {
-          background: #f7fafc;
-          color: #667eea;
+          background: #f0fdf4;
+          color: #16a34a;
         }
 
         .dropdown-item.logout {
-          color: #e53e3e;
-          border-top: 1px solid #e2e8f0;
+          color: #dc2626;
+          border-top: 1px solid #f3f4f6;
         }
 
         .dropdown-item.logout:hover {
-          background: #fff5f5;
-        }
-
-        .item-icon {
-          font-size: 1.1rem;
-          width: 20px;
-        }
-
-        .divider {
-          height: 1px;
-          background: #e2e8f0;
-          margin: 0.5rem 0;
+          background: #fef2f2;
         }
 
         @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-          .header-container {
-            padding: 0.75rem 1rem;
-          }
-
-          .date-display {
-            display: none;
-          }
-
-          .title {
-            font-size: 1.25rem;
-          }
-
-          .user-info {
-            display: none;
-          }
-
-          .user-button {
-            padding: 0.5rem;
-          }
-
-          .user-avatar {
-            width: 40px;
-            height: 40px;
-          }
+        @media (max-width: 1024px) {
+          .header-container { padding: 0 1rem; }
+          .date-display, .user-info { display: none; }
+          .title { font-size: 1rem; }
+          .menu-button { display: flex; }
         }
 
-        @media (max-width: 480px) {
-          .brand-logo {
-            width: 36px;
-            height: 36px;
-            font-size: 1rem;
-          }
-
-          .title {
-            font-size: 1rem;
-          }
-
-          .subtitle {
-            display: none;
-          }
+        .menu-button {
+          display: none;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          border: 1px solid #e5e7eb;
+          background: white;
+          color: #111827;
+          cursor: pointer;
         }
       `}</style>
 
       <header className="header">
         <div className="header-container">
-
+          <div className="header-left">
+            <button className="menu-button" onClick={onMenuClick}>
+              <Menu size={20} />
+            </button>
+            <div className="title-section">
+              {/* <h1 className="title">{title}</h1> */}
+              <div className="subtitle">
+                {/* <span>Healthy Progress</span> */}
+                <span className="time-badge">· {currentTime}</span>
+              </div>
+            </div>
+          </div>
 
           <div className="header-right">
             {/* Date Display */}
             <div className="date-display">
-              <span className="date-icon">📅</span>
-              <span className="date-text">
-                {new Date().toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  month: 'short', 
-                  day: 'numeric' 
+              <span>
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric'
                 })}
               </span>
             </div>
@@ -376,15 +328,7 @@ export const Header = ({ title, userRole }: HeaderProps) => {
                   <span className="user-name">{userName}</span>
                   <span className="user-role-badge">{userRole}</span>
                 </div>
-                <svg 
-                  className="dropdown-arrow" 
-                  width="16" 
-                  height="16" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2"
-                >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5">
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
@@ -393,65 +337,24 @@ export const Header = ({ title, userRole }: HeaderProps) => {
                 <div className="dropdown-menu">
                   <div className="dropdown-header">
                     <div className="dropdown-user-name">{userName}</div>
-                    <div className="dropdown-user-email">
-                      {userName.toLowerCase().replace(' ', '.')}@sicklesense.com
-                    </div>
+                    <div className="dropdown-user-email">{userEmail}</div>
                   </div>
 
-                    <button
-                        onClick={() => {
-                        setShowMenu(false);
-                        router.push(userRole === 'patient' ? '/patient/profile' : '/caregiver/profile');
-                        }}
-                        className="dropdown-item"
-                    >
-                        <span className="item-icon">👤</span>
-                        My Profile
-                    </button>
-
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      router.push(userRole === 'patient' ? '/patient/settings' : '/caregiver/settings');
-                    }}
-                    className="dropdown-item"
-                  >
-                    <span className="item-icon">⚙️</span>
-                    Settings
+                  <button className="dropdown-item" onClick={() => {
+                    setShowMenu(false);
+                    router.push(`/${userRole}/profile`);
+                  }}>
+                    <User size={18} /> My Profile
+                  </button>
+                  <button className="dropdown-item" onClick={() => {
+                    setShowMenu(false);
+                    router.push(`/${userRole}/settings`);
+                  }}>
+                    <Settings size={18} /> Settings
                   </button>
 
-                  {userRole === 'caregiver' && (
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        router.push('/caregiver/analytics');
-                      }}
-                      className="dropdown-item"
-                    >
-                      <span className="item-icon">📊</span>
-                      Analytics
-                    </button>
-                  )}
-
-                  <div className="divider" />
-
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      router.push(userRole === 'patient' ? '/patient/help' : '/caregiver/help');
-                    }}
-                    className="dropdown-item"
-                  >
-                    <span className="item-icon">❓</span>
-                    Help & Support
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    className="dropdown-item logout"
-                  >
-                    <span className="item-icon">🚪</span>
-                    Logout
+                  <button className="dropdown-item logout" onClick={handleLogout}>
+                    <LogOut size={18} /> Logout
                   </button>
                 </div>
               )}

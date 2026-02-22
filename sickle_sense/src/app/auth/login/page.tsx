@@ -348,7 +348,7 @@ const STYLES = `
 
 function PasswordInput({
   placeholder, value, onChange, error
-}: { placeholder?:string; value:string; onChange:(e:React.ChangeEvent<HTMLInputElement>)=>void; error?:string }) {
+}: { placeholder?: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string }) {
   const [show, setShow] = useState(false);
   return (
     <div className="input-wrapper">
@@ -363,14 +363,14 @@ function PasswordInput({
       <button type="button" className="eye-btn" onClick={() => setShow(!show)}>
         {show ? (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-            <line x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+            <line x1="1" y1="1" x2="23" y2="23" />
           </svg>
         ) : (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
           </svg>
         )}
       </button>
@@ -383,7 +383,7 @@ export default function LoginPage() {
   const router = useRouter();
   const role = searchParams.get('role') as 'patient' | 'caregiver' | null;
 
-  const [formData, setFormData] = useState({ email:'', password:'' });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -404,30 +404,46 @@ export default function LoginPage() {
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
     setIsLoading(true);
-    setTimeout(() => {
-      let user = null;
-      if (role === 'patient') {
-        for (const [id, patient] of mockPatients) {
-          if (patient.email === formData.email) { user = { ...patient, id }; break; }
-        }
-      } else if (role === 'caregiver') {
-        for (const [id, caregiver] of mockCaregivers) {
-          if (caregiver.email === formData.email) { user = { ...caregiver, id }; break; }
-        }
+    setErrors({});
+
+    try {
+      const response = await fetch('https://team-invictus-cavista-hackathon.onrender.com/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          role: role,
+        }),
+      });
+
+      const data = await response.json();
+      console.log("Login Response:", data);
+
+      if (!response.ok) {
+        setErrors({ general: data.message || data.error || 'Login failed. Please try again.' });
+        setIsLoading(false);
+        return;
       }
-      if (!user) {
-        setErrors({ general: `No ${role} account found with this email` });
-        setIsLoading(false); return;
-      }
+      console.log(data);
+
+      // Success – store token and user data
+      // Adapt if backend returns user directly or { token, user }
+      const token = data.token || localStorage.getItem('authToken') || 'demo-token';
+      const user = data.user || data;
+
       localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('userId', user.id);
-      const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
       localStorage.setItem('authToken', token);
-      localStorage.setItem('role', user.role);
-      localStorage.setItem('email', user.email);
+      localStorage.setItem('userId', String(data.id)); // Ensure it's a string
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('email', data.email);
+
       setIsLoading(false);
-      router.push(role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
-    }, 1000);
+      router.push(user.role === 'patient' ? '/patient/dashboard' : '/caregiver/dashboard');
+    } catch (error) {
+      setErrors({ general: 'Network error. Please check your connection.' });
+      setIsLoading(false);
+    }
   };
 
   if (!role) {
@@ -435,9 +451,9 @@ export default function LoginPage() {
       <>
         <style>{STYLES}</style>
         <div className="invalid-state">
-          <span style={{fontSize:32}}>⚠️</span>
-          <p style={{color:'#6b7280',fontSize:15}}>Invalid role. Please go back and select a role.</p>
-          <a href="/auth" style={{color:'#16a34a',fontWeight:600,fontSize:14}}>← Go back</a>
+          <span style={{ fontSize: 32 }}>⚠️</span>
+          <p style={{ color: '#6b7280', fontSize: 15 }}>Invalid role. Please go back and select a role.</p>
+          <a href="/auth" style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>← Go back</a>
         </div>
       </>
     );
@@ -457,7 +473,7 @@ export default function LoginPage() {
             <a href="/auth" className="back-link">
               <span className="back-arrow">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6.5 2L3.5 5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
               Back
@@ -480,7 +496,7 @@ export default function LoginPage() {
 
           {/* Form card */}
           <div className="form-card">
-            <div style={{display:'flex',justifyContent:'center'}}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
               <span className="role-badge">
                 <span className="role-dot" />
                 {role === 'patient' ? '👤 Signing in as Patient' : '🤝 Signing in as Caregiver'}
@@ -489,10 +505,10 @@ export default function LoginPage() {
 
             {errors.general && (
               <div className="alert alert-error">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0,marginTop:1}}>
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
                 {errors.general}
               </div>
@@ -512,8 +528,8 @@ export default function LoginPage() {
                 {errors.email && (
                   <span className="field-error">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444"/>
-                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round"/>
+                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
+                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
                     </svg>
                     {errors.email}
                   </span>
@@ -532,8 +548,8 @@ export default function LoginPage() {
                 {errors.password && (
                   <span className="field-error">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444"/>
-                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round"/>
+                      <circle cx="6" cy="6" r="5.5" stroke="#ef4444" />
+                      <path d="M6 3.5v3M6 8v.5" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" />
                     </svg>
                     {errors.password}
                   </span>
@@ -559,9 +575,9 @@ export default function LoginPage() {
             <div className="demo-card">
               <div className="demo-title">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
                 Demo accounts
               </div>

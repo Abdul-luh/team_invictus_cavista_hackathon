@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Header, Sidebar } from '@/components';
+import { Check } from 'lucide-react';
 import { mockPatients, mockNotifications } from '@/lib/mockData';
 import { Notification } from '@/types';
 
@@ -22,9 +22,6 @@ const STYLES = `
   }
   body{font-family:'DM Sans',sans-serif;background:var(--n50);}
 
-  .shell{display:flex;min-height:100svh;}
-  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
-  .content{flex:1;overflow-y:auto;padding:clamp(16px,3vw,28px);}
   .inner{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:clamp(14px,2vw,20px);}
 
   /* Top row */
@@ -207,37 +204,37 @@ const STYLES = `
 
 type FilterType = 'all' | 'unread' | 'high';
 
-const ICONS: Record<string, string> = {
-  risk_alert:'⚠️', medication_reminder:'💊', appointment:'📅', default:'ℹ️'
-};
-
 export default function NotificationsPage() {
   const router = useRouter();
-  const [caregiver, setCaregiver] = useState<any>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
-    const userId  = localStorage.getItem('userId');
+    const userId = localStorage.getItem('userId');
     if (!userStr || !userId) { router.push('/auth'); return; }
     const user = JSON.parse(userStr);
     if (user.role !== 'caregiver') { router.push('/auth'); return; }
-    setCaregiver(user);
     const all = (mockNotifications.get(userId) || [])
-      .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setNotifications(all);
   }, [router]);
 
-  const markRead   = (id: string) => setNotifications(n => n.map(x => x.id===id ? {...x,read:true} : x));
-  const markAllRead= ()           => setNotifications(n => n.map(x => ({...x,read:true})));
-  const del        = (id: string) => setNotifications(n => n.filter(x => x.id!==id));
+  const markRead = (id: string) => setNotifications(n => n.map(x => x.id === id ? { ...x, read: true } : x));
+  const markAllRead = () => setNotifications(n => n.map(x => ({ ...x, read: true })));
+  const del = (id: string) => setNotifications(n => n.filter(x => x.id !== id));
+
+  const confirmMedication = (id: string) => {
+    setNotifications(n => n.map(x => x.id === id ? { ...x, read: true, confirmed: true } : x));
+    // In a real app, this would call an API to record the adherence
+    alert('Medication intake confirmed successfully!');
+  };
 
   const getPatientName = (pid: string) => mockPatients.get(pid)?.name || 'Unknown Patient';
 
   const filtered = notifications.filter(n => {
     if (filter === 'unread') return !n.read;
-    if (filter === 'high')   return n.severity === 'high';
+    if (filter === 'high') return n.severity === 'high';
     return true;
   });
 
@@ -248,138 +245,159 @@ export default function NotificationsPage() {
     const d = new Date(date);
     const now = new Date();
     const diff = (now.getTime() - d.getTime()) / 1000;
-    if (diff < 60)   return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-    if (diff < 86400)return `${Math.floor(diff/3600)}h ago`;
-    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const sevClass = (s: string) => s === 'high' ? 'high' : s === 'medium' ? 'medium' : 'low';
 
   return (
     <>
-      <style>{STYLES}</style>
-      <div className="shell">
-        <Sidebar userRole="caregiver" />
-        <div className="main">
-          <Header title="Notifications" userRole="caregiver" />
-          <div className="content">
-            <div className="inner">
+      <style>{STYLES}
+        {`
+        .confirm-med-btn {
+          margin-top: 10px;
+          padding: 8px 16px;
+          background: var(--g600);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 12px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: background 0.2s;
+        }
+        .confirm-med-btn:hover { background: var(--g700); }
+        .confirmed-badge {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: var(--g600);
+          font-weight: 700;
+          font-size: 11px;
+          margin-top: 8px;
+        }
+      `}
+      </style>
+      <div className="inner">
 
-              {/* Page top */}
-              <div className="page-top au">
-                <div>
-                  <div className="page-heading">Notifications</div>
-                  <div className="page-sub">{notifications.length} total · {unread} unread</div>
-                </div>
-              </div>
-
-              {/* Unread summary */}
-              {unread > 0 && (
-                <div className="alert info au1">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0,marginTop:1}}>
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                  <div>
-                    <div className="alert-title">{unread} unread alert{unread !== 1 ? 's' : ''}</div>
-                    Review them to stay updated on your patients' health.
-                  </div>
-                </div>
-              )}
-
-              {/* Filter bar */}
-              <div className="filter-bar au2">
-                <div className="filter-pills">
-                  {([
-                    {id:'all',    label:'All',           count:notifications.length},
-                    {id:'unread', label:'Unread',         count:unread},
-                    {id:'high',   label:'High Priority',  count:highCount},
-                  ] as {id:FilterType; label:string; count:number}[]).map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => setFilter(f.id)}
-                      className={`pill ${filter===f.id ? `active-${f.id}` : 'inactive'}`}
-                    >
-                      {f.label}
-                      <span className="pill-count">{f.count}</span>
-                    </button>
-                  ))}
-                </div>
-                {unread > 0 && (
-                  <button className="mark-all-btn" onClick={markAllRead}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="20 6 9 17 4 12"/><polyline points="20 13 9 24 4 19"/>
-                    </svg>
-                    Mark all read
-                  </button>
-                )}
-              </div>
-
-              {/* Notification list */}
-              {filtered.length > 0 ? (
-                <div className="au3" style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {/* Group: unread first */}
-                  {filter === 'all' && unread > 0 && (
-                    <>
-                      {/* Unread group */}
-                      <div className="group-label">
-                        <div className="group-line"/>
-                        <span>New</span>
-                        <div className="group-line"/>
-                      </div>
-                      {filtered.filter(n => !n.read).map((n, i) => (
-                        <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
-                      ))}
-                      {filtered.filter(n => n.read).length > 0 && (
-                        <div className="group-label" style={{marginTop:8}}>
-                          <div className="group-line"/>
-                          <span>Earlier</span>
-                          <div className="group-line"/>
-                        </div>
-                      )}
-                      {filtered.filter(n => n.read).map((n, i) => (
-                        <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
-                      ))}
-                    </>
-                  )}
-
-                  {/* Filtered views: no grouping */}
-                  {filter !== 'all' && filtered.map((n, i) => (
-                    <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
-                  ))}
-                </div>
-              ) : (
-                <div className="card">
-                  <div className="empty">
-                    <div className="empty-icon">{filter === 'unread' ? '✨' : '🔔'}</div>
-                    <div className="empty-title">
-                      {filter === 'unread' ? "You're all caught up!" : 'No notifications'}
-                    </div>
-                    <div className="empty-sub">
-                      {filter === 'unread'
-                        ? 'No unread notifications right now.'
-                        : 'No notifications matching this filter yet.'}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
+        {/* Page top */}
+        <div className="page-top au">
+          <div>
+            <div className="page-heading">Notifications</div>
+            <div className="page-sub">{notifications.length} total · {unread} unread</div>
           </div>
         </div>
+
+        {/* Unread summary */}
+        {unread > 0 && (
+          <div className="alert info au1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div>
+              <div className="alert-title">{unread} unread alert{unread !== 1 ? 's' : ''}</div>
+              Review them to stay updated on your patients&apos; health.
+            </div>
+          </div>
+        )}
+
+        {/* Filter bar */}
+        <div className="filter-bar au2">
+          <div className="filter-pills">
+            {([
+              { id: 'all', label: 'All', count: notifications.length },
+              { id: 'unread', label: 'Unread', count: unread },
+              { id: 'high', label: 'High Priority', count: highCount },
+            ] as { id: FilterType; label: string; count: number }[]).map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`pill ${filter === f.id ? `active-${f.id}` : 'inactive'}`}
+              >
+                {f.label}
+                <span className="pill-count">{f.count}</span>
+              </button>
+            ))}
+          </div>
+          {unread > 0 && (
+            <button className="mark-all-btn" onClick={markAllRead}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" /><polyline points="20 13 9 24 4 19" />
+              </svg>
+              Mark all read
+            </button>
+          )}
+        </div>
+
+        {/* Notification list */}
+        {filtered.length > 0 ? (
+          <div className="au3" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Group: unread first */}
+            {filter === 'all' && unread > 0 && (
+              <>
+                {/* Unread group */}
+                <div className="group-label">
+                  <div className="group-line" />
+                  <span>New</span>
+                  <div className="group-line" />
+                </div>
+                {filtered.filter(n => !n.read).map((n, i) => (
+                  <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} onConfirm={confirmMedication} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
+                ))}
+                {filtered.filter(n => n.read).length > 0 && (
+                  <div className="group-label" style={{ marginTop: 8 }}>
+                    <div className="group-line" />
+                    <span>Earlier</span>
+                    <div className="group-line" />
+                  </div>
+                )}
+                {filtered.filter(n => n.read).map((n, i) => (
+                  <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} onConfirm={confirmMedication} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
+                ))}
+              </>
+            )}
+
+            {/* Filtered views: no grouping */}
+            {filter !== 'all' && filtered.map((n, i) => (
+              <NotifCard key={n.id} n={n} idx={i} onRead={markRead} onDelete={del} onConfirm={confirmMedication} getPatientName={getPatientName} formatTime={formatTime} sevClass={sevClass} />
+            ))}
+          </div>
+        ) : (
+          <div className="card">
+            <div className="empty">
+              <div className="empty-icon">{filter === 'unread' ? '✨' : '🔔'}</div>
+              <div className="empty-title">
+                {filter === 'unread' ? "You&apos;re all caught up!" : 'No notifications'}
+              </div>
+              <div className="empty-sub">
+                {filter === 'unread'
+                  ? 'No unread notifications right now.'
+                  : 'No notifications matching this filter yet.'}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </>
   );
 }
 
 /* ── Notification Card sub-component ── */
-function NotifCard({ n, idx, onRead, onDelete, getPatientName, formatTime, sevClass }: {
-  n: Notification; idx: number;
-  onRead: (id:string)=>void;
-  onDelete: (id:string)=>void;
-  getPatientName: (pid:string)=>string;
-  formatTime: (d:Date|string)=>string;
-  sevClass: (s:string)=>string;
+function NotifCard({ n, idx, onRead, onDelete, onConfirm, getPatientName, formatTime, sevClass }: {
+  n: Notification & { confirmed?: boolean }; idx: number;
+  onRead: (id: string) => void;
+  onDelete: (id: string) => void;
+  onConfirm: (id: string) => void;
+  getPatientName: (pid: string) => string;
+  formatTime: (d: Date | string) => string;
+  sevClass: (s: string) => string;
 }) {
   const sc = sevClass(n.severity);
   const icon = n.type === 'risk_alert' ? '⚠️' : n.type === 'medication_reminder' ? '💊' : n.type === 'appointment' ? '📅' : 'ℹ️';
@@ -388,7 +406,7 @@ function NotifCard({ n, idx, onRead, onDelete, getPatientName, formatTime, sevCl
   return (
     <div
       className={`notif-card ${sc} ${!n.read ? 'unread' : 'read'}`}
-      style={{animationDelay:`${idx * 0.04}s`, animation:'fadeUp .4s ease both'}}
+      style={{ animationDelay: `${idx * 0.04}s`, animation: 'fadeUp .4s ease both' }}
       onClick={() => !n.read && onRead(n.id)}
     >
       <div className={`notif-icon-wrap ${iconClass}`}>{icon}</div>
@@ -399,10 +417,28 @@ function NotifCard({ n, idx, onRead, onDelete, getPatientName, formatTime, sevCl
           <span className={`sev-chip ${sc}`}>{n.severity}</span>
         </div>
         <div className="notif-msg">{n.message}</div>
-        <div className="notif-meta">
+
+        {n.type === 'medication_reminder' && !n.confirmed && (
+          <button
+            className="confirm-med-btn"
+            onClick={(e) => { e.stopPropagation(); onConfirm(n.id); }}
+          >
+            <Check size={14} />
+            Confirm Medicine Taken
+          </button>
+        )}
+
+        {n.confirmed && (
+          <div className="confirmed-badge">
+            <Check size={12} strokeWidth={3} />
+            Medication Confirmed
+          </div>
+        )}
+
+        <div className="notif-meta" style={{ marginTop: (n.type === 'medication_reminder' || n.confirmed) ? 12 : 0 }}>
           <span className="notif-patient">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
             </svg>
             {getPatientName(n.patientId)}
           </span>
@@ -418,10 +454,10 @@ function NotifCard({ n, idx, onRead, onDelete, getPatientName, formatTime, sevCl
           aria-label="Delete notification"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <path d="M10 11v6M14 11v6"/>
-            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6M14 11v6" />
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
           </svg>
         </button>
       </div>
