@@ -57,10 +57,10 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
 
     setVerificationResult({
       verified: true,
-      ml_added: 75,
+      ml_added: 250,
       drinks_today: 6,
-      progress_percentage: 100,
-      message: "Great job! You've reached your daily goal!",
+      progress_percentage: 85,
+      message: "Daily hydration check! You're doing great.",
       daily_goal_ml: 2000,
       weekly_data: mockWeeklyData,
     });
@@ -141,7 +141,8 @@ export function HydrationCard({ hydrationLevel, onHydrationUpdate }: HydrationCa
       const formData = new FormData();
       formData.append('file', videoFile);
 
-      const response = await fetch(`https://team-invictus-cavista-hackathon.onrender.com/logs/hydration-verify/${userId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://team-invictus-cavista-hackathon.onrender.com';
+      const response = await fetch(`${apiUrl}/logs/hydration-verify/${userId}`, {
         method: 'POST',
         body: formData,
       });

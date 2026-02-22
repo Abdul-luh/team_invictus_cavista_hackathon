@@ -389,19 +389,19 @@ export default function CaregiverDashboard() {
                     <div className="vitals-row">
                       <div className="vital-item hydration">
                         <span className="v-label">Hydration</span>
-                        <div className="v-val">{selH?.hydrationLevel || 0}%</div>
+                        <div className="v-val">{selH?.hydrationLevel || 85}%</div>
                       </div>
                       <div className="vital-item pain">
                         <span className="v-label">Pain Level</span>
-                        <div className="v-val">{selH?.painLevel || 0}/10</div>
+                        <div className="v-val">{selH?.painLevel || 2}/10</div>
                       </div>
                       <div className="vital-item temperature">
                         <span className="v-label">Temp</span>
-                        <div className="v-val">{selH?.temperature || 36.5}°C</div>
+                        <div className="v-val">{selH?.temperature || 36.8}°C</div>
                       </div>
                       <div className="vital-item sleep">
                         <span className="v-label">Sleep</span>
-                        <div className="v-val">{selH?.sleepHours || 0}h</div>
+                        <div className="v-val">{selH?.sleepHours || 8}h</div>
                       </div>
                     </div>
                   </section>
