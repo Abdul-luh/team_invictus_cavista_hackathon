@@ -495,7 +495,8 @@ function RegisterContent() {
     }
 
     try {
-      const response = await fetch('https://team-invictus-cavista-hackathon.onrender.com/signup', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://team-invictus-cavista-hackathon.onrender.com';
+      const response = await fetch(`${apiUrl}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -52,7 +52,7 @@ export function EyeJaundiceCard({ onJaundiceUpdate }: EyeJaundiceCardProps) {
       verified: true,
       current_level: 2,
       status: 'Mild',
-      message: "Minor yellowing detected. Monitor hydration.",
+      message: "Healthy eye levels detected. Last scan shows everything is stable.",
       weekly_data: mockData
     });
   }, []);
@@ -99,7 +99,8 @@ export function EyeJaundiceCard({ onJaundiceUpdate }: EyeJaundiceCardProps) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`https://team-invictus-cavista-hackathon.onrender.com/logs/jaundice-check/${userId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://team-invictus-cavista-hackathon.onrender.com';
+      const response = await fetch(`${apiUrl}/logs/jaundice-check/${userId}`, {
         method: 'POST',
         body: formData,
       });

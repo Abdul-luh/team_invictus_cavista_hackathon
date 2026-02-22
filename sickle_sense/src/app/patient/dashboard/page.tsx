@@ -331,6 +331,18 @@ export default function PatientDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
 
+  // Demo fallback data for visual consistency
+  const DEMO_HEALTH_VALS = {
+    hydrationLevel: 85,
+    painLevel: 2,
+    sleepHours: 8,
+    temperature: 36.8,
+    fatigueLevel: 3,
+    eyeJaundiceLevel: 2,
+    medicationAdherence: true,
+    activityLevel: 'moderate'
+  };
+
   useEffect(() => {
     if (mockPatients.size === 0) initializeMockData();
 
@@ -415,11 +427,11 @@ export default function PatientDashboard() {
         <div className="stats-grid au1">
           <div className="stat green">
             <span className="stat-ico">💧</span>
-            <div className="stat-val">{currentHealth?.hydrationLevel ?? 0}%</div>
+            <div className="stat-val">{currentHealth?.hydrationLevel ?? DEMO_HEALTH_VALS.hydrationLevel}%</div>
             <div className="stat-lbl">Hydration</div>
             <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
               {[1, 2, 3].map((step) => {
-                const level = currentHealth?.hydrationLevel ?? 0;
+                const level = currentHealth?.hydrationLevel ?? DEMO_HEALTH_VALS.hydrationLevel;
                 const isActive = (step === 1 && level > 0) || (step === 2 && level > 33) || (step === 3 && level > 66);
                 return (
                   <div key={step} style={{
@@ -431,24 +443,24 @@ export default function PatientDashboard() {
               })}
             </div>
             <div className="stat-sub" style={{ marginTop: '4px' }}>
-              {(currentHealth?.hydrationLevel ?? 0) <= 33 ? 'Low' : (currentHealth?.hydrationLevel ?? 0) <= 66 ? 'Moderate' : 'Optimal'}
+              {(currentHealth?.hydrationLevel ?? DEMO_HEALTH_VALS.hydrationLevel) <= 33 ? 'Low' : (currentHealth?.hydrationLevel ?? DEMO_HEALTH_VALS.hydrationLevel) <= 66 ? 'Moderate' : 'Optimal'}
             </div>
           </div>
           <div className="stat amber">
             <span className="stat-ico">🩺</span>
-            <div className="stat-val">{currentHealth?.painLevel ?? 0}<span style={{ fontSize: 14, fontWeight: 400 }}>/10</span></div>
+            <div className="stat-val">{currentHealth?.painLevel ?? DEMO_HEALTH_VALS.painLevel}<span style={{ fontSize: 14, fontWeight: 400 }}>/10</span></div>
             <div className="stat-lbl">Pain Level</div>
             <div className="stat-sub">Self-reported</div>
           </div>
           <div className="stat blue">
             <span className="stat-ico">😴</span>
-            <div className="stat-val">{currentHealth?.sleepHours ?? 0}<span style={{ fontSize: 14, fontWeight: 400 }}>h</span></div>
+            <div className="stat-val">{currentHealth?.sleepHours ?? DEMO_HEALTH_VALS.sleepHours}<span style={{ fontSize: 14, fontWeight: 400 }}>h</span></div>
             <div className="stat-lbl">Sleep</div>
             <div className="stat-sub">Last night</div>
           </div>
           <div className="stat orange">
             <span className="stat-ico">🌡️</span>
-            <div className="stat-val">{currentHealth?.temperature ?? 37}°</div>
+            <div className="stat-val">{currentHealth?.temperature ?? DEMO_HEALTH_VALS.temperature}°</div>
             <div className="stat-lbl">Temperature</div>
             <div className="stat-sub">Celsius</div>
           </div>
@@ -565,52 +577,50 @@ export default function PatientDashboard() {
               </div> */}
 
         {/* Today's Health Detail */}
-        {currentHealth && (
-          <div className="card au4">
-            <div className="card-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-              Today's Health Detail
-            </div>
-            <div className="health-grid">
-              <div className="health-row">
-                <div>
-                  <div className="health-item-lbl">Fatigue</div>
-                  <div className="bar-row">
-                    <div className="bar-wrap"><div className="bar" style={{ width: `${currentHealth.fatigueLevel * 10}%`, background: '#f97316' }} /></div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--n700)', minWidth: 28 }}>{currentHealth.fatigueLevel}/10</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="health-item-lbl">Eye Jaundice</div>
-                  <div className="bar-row">
-                    <div className="bar-wrap"><div className="bar" style={{ width: `${currentHealth.eyeJaundiceLevel * 10}%`, background: '#ca8a04' }} /></div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--n700)', minWidth: 28 }}>{currentHealth.eyeJaundiceLevel}/10</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="health-item-lbl">Activity Level</div>
-                  <span className="activity-chip">🏃 {currentHealth.activityLevel}</span>
+        <div className="card au4">
+          <div className="card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+            Today's Health Detail
+          </div>
+          <div className="health-grid">
+            <div className="health-row">
+              <div>
+                <div className="health-item-lbl">Fatigue</div>
+                <div className="bar-row">
+                  <div className="bar-wrap"><div className="bar" style={{ width: `${(currentHealth?.fatigueLevel ?? DEMO_HEALTH_VALS.fatigueLevel) * 10}%`, background: '#f97316' }} /></div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--n700)', minWidth: 28 }}>{currentHealth?.fatigueLevel ?? DEMO_HEALTH_VALS.fatigueLevel}/10</span>
                 </div>
               </div>
-              <div className="health-row">
-                <div>
-                  <div className="health-item-lbl">Medication</div>
-                  <span className={`med-badge ${currentHealth.medicationAdherence ? 'ok' : 'missed'}`}>
-                    {currentHealth.medicationAdherence ? '✓ On Track' : '✗ Missed'}
-                  </span>
+              <div>
+                <div className="health-item-lbl">Eye Jaundice</div>
+                <div className="bar-row">
+                  <div className="bar-wrap"><div className="bar" style={{ width: `${(currentHealth?.eyeJaundiceLevel ?? DEMO_HEALTH_VALS.eyeJaundiceLevel) * 10}%`, background: '#ca8a04' }} /></div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--n700)', minWidth: 28 }}>{currentHealth?.eyeJaundiceLevel ?? DEMO_HEALTH_VALS.eyeJaundiceLevel}/10</span>
                 </div>
-                {currentHealth.notes && (
-                  <div>
-                    <div className="health-item-lbl">Notes</div>
-                    <div style={{ fontSize: 13, color: 'var(--n600)', background: 'var(--n50)', padding: '8px 10px', borderRadius: 10, fontWeight: 300, lineHeight: 1.5 }}>{currentHealth.notes}</div>
-                  </div>
-                )}
+              </div>
+              <div>
+                <div className="health-item-lbl">Activity Level</div>
+                <span className="activity-chip">🏃 {currentHealth?.activityLevel ?? DEMO_HEALTH_VALS.activityLevel}</span>
+              </div>
+            </div>
+            <div className="health-row">
+              <div>
+                <div className="health-item-lbl">Medication</div>
+                <span className={`med-badge ${(currentHealth?.medicationAdherence ?? DEMO_HEALTH_VALS.medicationAdherence) ? 'ok' : 'missed'}`}>
+                  {(currentHealth?.medicationAdherence ?? DEMO_HEALTH_VALS.medicationAdherence) ? '✓ On Track' : '✗ Missed'}
+                </span>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <div className="health-item-lbl">Notes</div>
+                <div style={{ fontSize: 13, color: 'var(--n600)', background: 'var(--n50)', padding: '8px 10px', borderRadius: 10, fontWeight: 300, lineHeight: 1.5 }}>
+                  {currentHealth?.notes || "No symptoms reported today."}
+                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Medication Summary Row */}
         <div className="summary-card au4">
@@ -621,23 +631,23 @@ export default function PatientDashboard() {
           <div className="summary-grid">
             <div className="day-summary">
               <span className="day-label">Yesterday</span>
-              <div className={`day-status ${yesterdayHealth?.medicationAdherence ? 'ok' : 'missed'}`}>
-                {yesterdayHealth?.medicationAdherence ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                {yesterdayHealth?.medicationAdherence ? 'Taken' : 'Missed'}
+              <div className={`day-status ${(yesterdayHealth?.medicationAdherence ?? true) ? 'ok' : 'missed'}`}>
+                {(yesterdayHealth?.medicationAdherence ?? true) ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                {(yesterdayHealth?.medicationAdherence ?? true) ? 'Taken' : 'Missed'}
               </div>
             </div>
             <div className="day-summary">
               <span className="day-label">Today</span>
-              <div className={`day-status ${currentHealth?.medicationAdherence ? 'ok' : 'missed'}`}>
-                {currentHealth?.medicationAdherence ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                {currentHealth?.medicationAdherence ? 'Taken' : 'Pending'}
+              <div className={`day-status ${(currentHealth?.medicationAdherence ?? DEMO_HEALTH_VALS.medicationAdherence) ? 'ok' : 'missed'}`}>
+                {(currentHealth?.medicationAdherence ?? DEMO_HEALTH_VALS.medicationAdherence) ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                {(currentHealth?.medicationAdherence ?? DEMO_HEALTH_VALS.medicationAdherence) ? 'Taken' : 'Pending'}
               </div>
             </div>
           </div>
-          <div className={`summary-text ${(!currentHealth?.medicationAdherence || !yesterdayHealth?.medicationAdherence) ? 'warning' : ''}`}>
+          <div className={`summary-text ${(!(currentHealth?.medicationAdherence ?? DEMO_HEALTH_VALS.medicationAdherence) || !(yesterdayHealth?.medicationAdherence ?? true)) ? 'warning' : ''}`}>
             {(() => {
-              const todayOk = currentHealth?.medicationAdherence;
-              const yesterdayOk = yesterdayHealth?.medicationAdherence;
+              const todayOk = currentHealth?.medicationAdherence ?? DEMO_HEALTH_VALS.medicationAdherence;
+              const yesterdayOk = yesterdayHealth?.medicationAdherence ?? true;
               if (todayOk && yesterdayOk) return "Great job! You've stayed on track with your medication for the last two days. Consistency is key.";
               if (todayOk && !yesterdayOk) return "You're back on track today after missing yesterday's dose. Keep it up!";
               if (!todayOk && yesterdayOk) return "You haven't logged today's medication yet. It's important to stay consistent to prevent crises.";

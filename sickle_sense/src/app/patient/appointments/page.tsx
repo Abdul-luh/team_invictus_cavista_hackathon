@@ -7,7 +7,7 @@ import { mockAppointments } from '@/lib/mockData';
 import { Appointment } from '@/types';
 import { formatDate, formatTime } from '@/lib/utils';
 import { Calendar, Clock, MapPin, User, ChevronRight, Plus } from 'lucide-react';
-import { div } from 'framer-motion/client';
+
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500&display=swap');
@@ -145,86 +145,86 @@ export default function PatientAppointments() {
         <>
             <style>{STYLES}</style>
             <div className="shell">
-               
-                    <div className="content">
-                        <div className="inner">
 
-                            <div className="banner au">
-                                <div className="banner-icon">📅</div>
-                                <div className="banner-title">Your Appointments</div>
-                                <div className="banner-desc">Manage your upcoming doctor visits and keep track of your medical history.</div>
-                            </div>
+                <div className="content">
+                    <div className="inner">
 
-                            <div className="page-top au1" style={{ marginTop: '10px' }}>
-                                <div>
-                                    <div className="page-heading">Upcoming</div>
-                                    <div className="page-sub">You have {upcoming.length} scheduled visits</div>
-                                </div>
-                            </div>
-
-                            <div className="apt-list au2">
-                                {upcoming.length > 0 ? upcoming.map(apt => (
-                                    <div key={apt.id} className="apt-item">
-                                        <div className="apt-date">
-                                            <div className="apt-day">{new Date(apt.date).getDate()}</div>
-                                            <div className="apt-mon">{new Date(apt.date).toLocaleString('default', { month: 'short' })}</div>
-                                        </div>
-                                        <div className="apt-main">
-                                            <div className="apt-doctor">{apt.doctorName}</div>
-                                            <div className="apt-reason">{apt.reason}</div>
-                                            <div className="apt-info-grid">
-                                                <div className="apt-info"><Clock size={14} /> {apt.time}</div>
-                                                <div className="apt-info"><MapPin size={14} /> {apt.facility}</div>
-                                                <span className="apt-status scheduled">Scheduled</span>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <ChevronRight size={20} color="var(--n300)" />
-                                        </div>
-                                    </div>
-                                )) : (
-                                    <div className="card">
-                                        <div className="empty">
-                                            <div className="empty-icon">📂</div>
-                                            <div className="empty-title">No upcoming appointments</div>
-                                            <div style={{ fontSize: 13, fontWeight: 300 }}>Contact your caregiver if you need to book a visit.</div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {past.length > 0 && (
-                                <>
-                                    <div className="page-top au" style={{ marginTop: '32px' }}>
-                                        <div>
-                                            <div className="page-heading">Past Visits</div>
-                                            <div className="page-sub">Completed medical appointments</div>
-                                        </div>
-                                    </div>
-                                    <div className="apt-list au1">
-                                        {past.map(apt => (
-                                            <div key={apt.id} className="apt-item" style={{ opacity: 0.8 }}>
-                                                <div className="apt-date" style={{ background: 'var(--n100)', borderColor: 'var(--n200)' }}>
-                                                    <div className="apt-day" style={{ color: 'var(--n500)' }}>{new Date(apt.date).getDate()}</div>
-                                                    <div className="apt-mon" style={{ color: 'var(--n400)' }}>{new Date(apt.date).toLocaleString('default', { month: 'short' })}</div>
-                                                </div>
-                                                <div className="apt-main">
-                                                    <div className="apt-doctor">{apt.doctorName}</div>
-                                                    <div className="apt-reason" style={{ marginBottom: 4 }}>{apt.reason}</div>
-                                                    <div className="apt-info-grid">
-                                                        <div className="apt-info">{formatDate(apt.date)}</div>
-                                                        <span className="apt-status completed">Completed</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-
+                        <div className="banner au">
+                            <div className="banner-icon">📅</div>
+                            <div className="banner-title">Your Appointments</div>
+                            <div className="banner-desc">Manage your upcoming doctor visits and keep track of your medical history.</div>
                         </div>
+
+                        <div className="page-top au1" style={{ marginTop: '10px' }}>
+                            <div>
+                                <div className="page-heading">Upcoming</div>
+                                <div className="page-sub">You have {upcoming.length} scheduled visits</div>
+                            </div>
+                        </div>
+
+                        <div className="apt-list au2">
+                            {upcoming.length > 0 ? upcoming.map(apt => (
+                                <div key={apt.id} className="apt-item">
+                                    <div className="apt-date">
+                                        <div className="apt-day">{new Date(apt.date).getDate()}</div>
+                                        <div className="apt-mon">{new Date(apt.date).toLocaleString('default', { month: 'short' })}</div>
+                                    </div>
+                                    <div className="apt-main">
+                                        <div className="apt-doctor">{apt.doctorName}</div>
+                                        <div className="apt-reason">{apt.reason}</div>
+                                        <div className="apt-info-grid">
+                                            <div className="apt-info"><Clock size={14} /> {apt.time}</div>
+                                            <div className="apt-info"><MapPin size={14} /> {apt.facility}</div>
+                                            <span className="apt-status scheduled">Scheduled</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                        <ChevronRight size={20} color="var(--n300)" />
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="card">
+                                    <div className="empty">
+                                        <div className="empty-icon">📂</div>
+                                        <div className="empty-title">No upcoming appointments</div>
+                                        <div style={{ fontSize: 13, fontWeight: 300 }}>Contact your caregiver if you need to book a visit.</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {past.length > 0 && (
+                            <>
+                                <div className="page-top au" style={{ marginTop: '32px' }}>
+                                    <div>
+                                        <div className="page-heading">Past Visits</div>
+                                        <div className="page-sub">Completed medical appointments</div>
+                                    </div>
+                                </div>
+                                <div className="apt-list au1">
+                                    {past.map(apt => (
+                                        <div key={apt.id} className="apt-item" style={{ opacity: 0.8 }}>
+                                            <div className="apt-date" style={{ background: 'var(--n100)', borderColor: 'var(--n200)' }}>
+                                                <div className="apt-day" style={{ color: 'var(--n500)' }}>{new Date(apt.date).getDate()}</div>
+                                                <div className="apt-mon" style={{ color: 'var(--n400)' }}>{new Date(apt.date).toLocaleString('default', { month: 'short' })}</div>
+                                            </div>
+                                            <div className="apt-main">
+                                                <div className="apt-doctor">{apt.doctorName}</div>
+                                                <div className="apt-reason" style={{ marginBottom: 4 }}>{apt.reason}</div>
+                                                <div className="apt-info-grid">
+                                                    <div className="apt-info">{formatDate(apt.date)}</div>
+                                                    <span className="apt-status completed">Completed</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
                     </div>
                 </div>
-            </>
+            </div>
+        </>
     );
 }

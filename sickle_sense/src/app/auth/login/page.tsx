@@ -407,7 +407,8 @@ function LoginContent() {
     setErrors({});
 
     try {
-      const response = await fetch('https://team-invictus-cavista-hackathon.onrender.com/login', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://team-invictus-cavista-hackathon.onrender.com';
+      const response = await fetch(`${apiUrl}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
